@@ -17,6 +17,8 @@
 (define-base-kind vty)
 (define-base-kind cty)
 
+(define st (box '()))
+
 (begin-for-syntax
   (current-type? (λ (t) (or (vty? t) (cty? t)))))
 
@@ -70,6 +72,7 @@
   [⊢ e ≫ e- ⇒ B (⇒ ~cty)]
   --------------------------
   [⊢ (begin (displayln "") e-) ⇒ B])
+(define-typed-syntax)
 
 (define-typed-syntax true
   (_:id ≫
@@ -99,13 +102,20 @@
   (⊢ A ≫ A- ⇐ vty)
   ((x ≫ x- : A-) ⊢ e ≫ e- ⇒ B (⇒ ~cty))
   --------------------------------------
-  (⊢ (lambda (x-) e-) ⇒ (-> A- B)))
+  (⊢
+   (let- ([x- (car (unbox st))])
+     (set-box! st (cdr (unbox st)))
+     e-)
+   ⇒ (-> A- B)))
 
 (define-typed-syntax (^ e1 e2) ≫
   (⊢ e1 ≫ e1- ⇒ (~-> A B))
   (⊢ e2 ≫ e2- ⇐ A)
   ----------------
-  (⊢ (#%app- e1- e2-) ⇒ B))
+  (⊢ (let- ()
+           (set-box! st (cons e2- (unbox st)))
+           e1-)
+     ⇒ B))
 
 (define-base-type ⊥)
 (define-typed-syntax (main e) ≫
