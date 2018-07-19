@@ -3,13 +3,17 @@
 ;; A CBPV Scheme-like
 ;;
 (require (rename-in racket/function (thunk thunk-)))
+(provide (all-defined-out))
 (define (force- th) (th))
 (define st (box '()))
+
+(struct foreign (payload))
 
 (define-base-type v)
 (define-base-type c)
 
 ;; Values
+;; 
 (define-typed-syntax #%datum
   [(_ . d) ≫
    -----------------
