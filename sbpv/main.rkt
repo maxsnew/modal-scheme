@@ -1,15 +1,28 @@
 #lang racket/base
 
 (require "sbpv.rkt" syntax/parse
-         (for-syntax racket/base))
+         (for-syntax racket/base syntax/parse)
+         (only-in turnstile define-primop))
 (provide (all-from-out "sbpv.rkt")
-         (rename-out [module-begin #%module-begin]))
+         define-primop
+         (rename-out [module-begin #%module-begin]
+                     [typed-define define]))
 
+(begin-for-syntax
+  (define-syntax-class def
+    (pattern ((~literal typed-define) . _))
+    (pattern ((~literal define-primop) . _))))
 (define-syntax (module-begin syn)
-  (syntax-case syn ()
-    [(_ e ...)
+  (syntax-parse syn
+    [(_ (~or d:def e) ...)
+     #;#;#:do
+     [(displayln (syntax->datum #`(#%module-begin
+                                   (begin
+                                     d ...
+                                     (main e) ...))))]
      #`(#%module-begin
         (begin
+          d ...
           (main e) ...))]))
 
 #;

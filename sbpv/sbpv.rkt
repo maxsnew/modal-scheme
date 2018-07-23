@@ -2,16 +2,46 @@
 
 ;; A CBPV Scheme-like
 ;;
-(require (rename-in racket/function (thunk thunk-)))
+(require (rename-in racket/function (thunk thunk-))
+         "initialize.rkt"
+         (for-syntax syntax/parse))
 (provide (all-defined-out)
          (rename-out (many-app #%app)))
 (define (force- th) (th))
-(define st (box '()))
-
-(struct foreign (payload))
 
 (define-base-type value)
 (define-base-type computation)
+
+
+(define-syntax (require-wrapped-provide stx)
+  (syntax-parse stx
+    [(_ lib x)
+     #:with x-tmp (generate-temporary #'x)
+     #:with x-wrapped (generate-temporary #'x)
+     #'(begin-
+         (require (only-in lib [x x-tmp]))
+         (define x-wrapped (rkt->sbpv x-tmp))
+         (define-primop x x-wrapped : value)
+         (provide x))]))
+
+(define-syntax (require-wrapped stx)
+  (syntax-parse stx
+    [(_ lib x)
+     #:with x-tmp (generate-temporary #'x)
+     #:with x-wrapped (generate-temporary #'x)
+     #'(begin-
+         (require (only-in lib [x x-tmp]))
+         (define x-wrapped (rkt->sbpv x-tmp))
+         (define-primop x x-wrapped : value))]))
+#;
+(define-syntax (from-racket stx)
+  (syntax-parse stx
+    [(_ lib x)
+     ]))
+
+;; (define sbpv-+ (rkt->sbpv +-))
+;; (define-primop + sbpv-+ : value)
+(require-wrapped-provide racket/base +)
 
 ;; Values
 ;; 
@@ -63,14 +93,6 @@
    --------------
    (≻ (let ([x e]) (let* (rst ...) ebod)))])
 
-(define-typed-syntax (unsafe-+ e ...) ≫
-  (⊢ e ≫ e- ⇐ value) ...
-  -----------------
-  (⊢ (+- e- ...) ⇒ value))
-(define-typed-syntax +
-  [(_ e ...) ≫
-   ---------
-   (≻ (ret (unsafe-+ e ...)))])
 (define-typed-syntax λ
   ([_ () ebod] ≫
    ---------------
@@ -80,6 +102,13 @@
    [≻ (case-λ
        [() (error "expected more arguments but didn't get them")]
        [(x) (λ (xs ...) ebod)])]])
+
+(define-typed-syntax (cons e es) ≫
+  (⊢ e ≫ e- ⇐ value)
+  (⊢ es ≫ es- ⇐ value)
+  ----------------------
+  (⊢ (cons- e- es-) ⇒ value))
+
 
 (define-typed-syntax (zero? e) ≫
   (⊢ e ≫ e- ⇐ value)
@@ -92,10 +121,15 @@
   ----------------
   (⊢ (thunk- e-) ⇒ value))
 
-(define-typed-syntax (! e) ≫
+(define-typed-syntax (basic-! e) ≫
   (⊢ e ≫ e- ⇐ value)
   ----------------
   (⊢ (force- e-) ⇒ computation))
+
+(define-typed-syntax (! e es ...) ≫
+  ------------------------
+  (≻ (many-app (basic-! e) es ...)))
+
 
 (define-typed-syntax (case-λ [() e] [(x) ex]) ≫
   (⊢ e ≫ e- ⇐ computation)
@@ -116,7 +150,7 @@
   (⊢ e2 ≫ e2- ⇐ value)
   ----------------
   (⊢ (let- ()
-           (set-box! st (cons e2- (unbox st)))
+           (set-box! st (cons- e2- (unbox st)))
            e1-)
      ⇒ computation))
 
@@ -137,6 +171,17 @@
   (⊢ e ≫ e- ⇐ computation)
   ----------------
   (⊢ (let- ([x- e-]) x-) ⇒ computation))
+
+(define-typed-syntax (typed-define x e) ≫
+  (⊢ e ≫ e- ⇐ value)
+  #:with x-tmp (generate-temporary #'x)
+  --------------------
+  (≻
+   (begin-
+     (define x-tmp e-)
+     (define-syntax x (make-variable-like-transformer (assign-type
+                                                       #'x-tmp #'value
+                                                       #:wrap? #f))))))
 
 (module+ test
   (require

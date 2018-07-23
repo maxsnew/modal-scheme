@@ -1,6 +1,11 @@
 #lang racket/base
 
-(require (only-in "sbpv.rkt" st foreign foreign? foreign-payload))
+(provide (struct-out foreign)
+         rkt->sbpv sbpv->rkt st)
+(define st (box '()))
+
+(struct foreign (payload))
+
 
 (define (datum? x)
   (or (boolean? x)
@@ -9,6 +14,7 @@
       (symbol? x)
       (null? x)))
 ;; rkt->sbpv
+;; racket value -> sbpv value
 (define (rkt->sbpv x)
   (cond
     [(datum? x) x]
