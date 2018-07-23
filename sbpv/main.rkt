@@ -1,8 +1,22 @@
 #lang racket/base
 
-(module+ test
-  (require rackunit))
+(require "sbpv.rkt" syntax/parse
+         (for-syntax racket/base))
+(provide (all-from-out "sbpv.rkt")
+         (rename-out [module-begin #%module-begin]))
 
+(define-syntax (module-begin syn)
+  (syntax-case syn ()
+    [(_ e ...)
+     #`(#%module-begin
+        (begin
+          (main e) ...))]))
+
+#;
+(define-syntax (top-interaction syn)
+  (syntax-case syn
+      [(_ . e)
+       #`(#%top-interaction (bind (x e) (ret x)))]))
 ;; Notice
 ;; To install (from within the package directory):
 ;;   $ raco pkg install

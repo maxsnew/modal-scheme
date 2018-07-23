@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "sbpv.rkt")
+(require (only-in "sbpv.rkt" st foreign foreign? foreign-payload))
 
 (define (datum? x)
   (or (boolean? x)
@@ -39,3 +39,4 @@
   
   (check-equal? ((sbpv->rkt (rkt->sbpv list)) 1 2 3) '(1 2 3))
   (check-equal? ((sbpv->rkt (rkt->sbpv (λ args (reverse args)))) 1 2 3) '(3 2 1)))
+

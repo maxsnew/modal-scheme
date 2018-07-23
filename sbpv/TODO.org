@@ -1,6 +1,7 @@
 * TODO
-  1. [ ] Make a safe import/export mechanism with Racket
-  2. [ ] Implement dot args, apply, general case-lambda as macros in
+  1. [ ] Make a #lang
+  2. [ ] Make a safe import/export mechanism with Racket
+  3. [ ] Implement dot args, apply, general case-lambda as macros in
      SBPV
-  3. [ ] Implement some codata: streams, Haskell lists, parser
+  4. [ ] Implement some codata: streams, Haskell lists, parser
      combinator library
