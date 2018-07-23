@@ -1,30 +1,16 @@
 #lang sbpv
 
-;; Infinite loop
-#;
-(let ([Y
-       (thunk
-        (case-λ
-         [() (error "Y combinator expects one argument, but got none")]
-         [(f)
-          (let ([self-app (thunk
-                           (case-λ
-                            [() (error "self-app should always call itself")]
-                            [(x) ((! f) (thunk ((! x) x)))]))])
-            ((! self-app) self-app))]))])
-  ((! Y) (thunk
-          (case-λ [() (error "nope")]
-                  [(loop) (! loop)]))))
+;; A Y combinator to get us moving
 (define Y
   (thunk
-         (case-λ
-          [() (error "Y combinator expects one argument, but got none")]
-          [(f)
-           (let ([self-app (thunk
-                            (case-λ
-                             [() (error "self-app should always call itself")]
-                             [(x) (! f (thunk (! x x)))]))])
-             ((! self-app) self-app))])))
+   (case-λ
+    [() (error "Y combinator expects one argument, but got none")]
+    [(f)
+     (let ([self-app (thunk (λ (x) (! f (thunk (! x x)))))])
+       ((! self-app) self-app))])))
+
+;; Infinite loop
+; (! Y (thunk (λ (loop) (! loop))))
 
 (define sum
   {thunk
@@ -65,4 +51,5 @@
                         (bind (tl (! cdr rest))
                               (! loop (cons hd acc) tl)))))))])
      (! Y loop null))))
-(! reverse (cons 3 (cons 4 null)))
+
+(! reverse (cons 3 (cons 4 (cons 5 null))))
