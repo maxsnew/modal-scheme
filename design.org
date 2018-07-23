@@ -1,0 +1,48 @@
+* Design of SBPV
+** Naming
+I should come up with a better name at some point
+** Implicit shifting
+
+Coding with explicit shifts between computation and value is a bit
+tiresome and can be made lighter-weight (though possibly confusing) by
+having some of them be implicit.
+For now I'll keep everything implicit, but here I'll weigh the
+options.
+
+Right now everything is unambiguous, but consider the following
+situations where a programmer might be frustrated by this unambiguity:
+1. (UI) I want to pass a thunk to a function, so (M N). We can tell
+   syntactically that N is a computation (because kind is
+   inferrable/unambiguous), but we get an error: the problem is that
+   arguments must be values, and I have to write `(M {N})` or
+   `(M (thunk N))`
+2. (FE) I want to run a computation and pass its result as an argument
+   to a function, so (M N) again. I want this to desugar to
+   `(bind (x N) (M x))1.
+
+We get a dual problem when we are supposed to make a computation
+1. (FI) In the body of a bind, I just want to return the value so I
+   write (bind (x M) V), I want it to implicitly be
+   `(bind (x M) (ret V))`
+2. (UE) I know a variable is a thunk, and I want to call it with some
+   arguments, so I write (Vf Va ...), which I expect to desugar to
+   `((! Vf) Va ...)`.
+
+For each of these two problems we can (1) make the programmer resolve
+the ambiguity or (2) make one of the two options implicit, leaving
+only the other explicit. This gives us 3^2=9 language designs.
+
+1. Both explicit: cbpv
+2. UI and UE implicit, FI and FE explicit: something that feels like
+   CBName
+3. FI and FE implicit: something that feels like CBV, maybe the same
+   as untyped EEC? Downside is FE implicit means we have to pick an
+   evaluation order
+4. UI implicit, FI implicit: breaks substitutivity:
+   (let [x M] x) where M is a computation is different from M
+5. UE implicit, FE implicit: breaks substitutivity?
+6. UI implicit, UE, FI, FE explicit ???
+7. FE implicit, UI, UE, FI explicit ???
+8. UE implicit, UI, FI, FE explicit ???
+9. FI implicit, UI, UE, FE explicit ???
+
