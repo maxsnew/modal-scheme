@@ -52,3 +52,17 @@
        (! Y loop)))))
 
 (! const 3 4 5 6 7 8 9 10) ; 3
+
+(define reverse
+  (thunk
+   (let ([loop
+          (thunk
+           (λ (loop acc rest)
+             (bind (mt? (! null? rest))
+              (if mt?
+                  (ret acc)
+                  (bind (hd (! car rest))
+                        (bind (tl (! cdr rest))
+                              (! loop (cons hd acc) tl)))))))])
+     (! Y loop null))))
+(! reverse (cons 3 (cons 4 null)))

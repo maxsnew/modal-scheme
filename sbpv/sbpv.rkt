@@ -39,9 +39,12 @@
     [(_ lib x)
      ]))
 
-;; (define sbpv-+ (rkt->sbpv +-))
-;; (define-primop + sbpv-+ : value)
 (require-wrapped-provide racket/base +)
+(require-wrapped-provide racket cons?)
+(require-wrapped-provide racket null)
+(require-wrapped-provide racket null?)
+(require-wrapped-provide racket/base car)
+(require-wrapped-provide racket/base cdr)
 
 ;; Values
 ;; 
@@ -62,7 +65,7 @@
   ----------------
   (⊢
    (let- ([x (unbox st)])
-     (if- (null? x)
+     (if- (null?- x)
           e-
           (error- (format "expected a return address on the stack but got stack ~a" x))))
    ⇒ computation))
@@ -136,12 +139,12 @@
   ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
   --------------------------------
   (⊢ (let- ()
-       (define cur (unbox st))
-       (cond
-         [(null? cur) e-]
+       (define- cur (unbox- st))
+       (cond-
+         [(null?- cur) e-]
          [else
-          (define x- (car cur))
-          (set-box! st (cdr cur))
+          (define- x- (car- cur))
+          (set-box!- st (cdr- cur))
           ex-]))
      ⇒ computation))
 
@@ -182,7 +185,6 @@
      (define-syntax x (make-variable-like-transformer (assign-type
                                                        #'x-tmp #'value
                                                        #:wrap? #f))))))
-
 (module+ test
   (require
     turnstile/rackunit-typechecking
