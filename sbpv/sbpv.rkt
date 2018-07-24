@@ -40,12 +40,16 @@
      ]))
 
 (require-wrapped-provide racket/base +)
+(require-wrapped-provide racket zero?)
+(require-wrapped-provide racket/base -)
+(require-wrapped-provide racket/base not)
 (require-wrapped-provide racket cons?)
 (require-wrapped-provide racket null)
 (require-wrapped-provide racket null?)
 (require-wrapped-provide racket/base car)
 (require-wrapped-provide racket/base cdr)
 (require-wrapped-provide racket/base equal?)
+(require-wrapped-provide racket/base symbol?)
 
 ;; Values
 ;;
@@ -120,12 +124,6 @@
   ----------------------
   (⊢ (cons- e- es-) ⇒ value))
 
-(define-typed-syntax (zero? e) ≫
-  (⊢ e ≫ e- ⇐ value)
-  --------------------------
-  (⊢ (zero?- e-) ⇒ value))
-
-
 (define-typed-syntax (thunk e) ≫
   (⊢ e ≫ e- ⇐ computation)
   ----------------
@@ -192,6 +190,17 @@
      (define-syntax x (make-variable-like-transformer (assign-type
                                                        #'x-tmp #'value
                                                        #:wrap? #f))))))
+(define-typed-syntax (letrec ([x:id ex] ...) e) ≫
+  ((x ≫ x- : value) ... ⊢ (ex ≫ ex- ⇐ value) ... (e ≫ e- ⇐ computation))
+  ------------------------------------
+  (⊢ (letrec- ([x- ex-] ...) e-) ⇒ computation))
+#;
+(define-typed-syntax mutual-recursive
+  [(_ (define-thunk (! x:id y:id ...) e) ...)] ≫
+  ((x ≫ x- : value) ... ⊢ (define-thunk (! x y ...) e) ≫ e- : value) ...
+  --------------------------------
+  [≻ (begin- e- ...)])
+
 (module+ test
   (require
     turnstile/rackunit-typechecking

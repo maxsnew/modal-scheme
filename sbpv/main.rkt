@@ -20,6 +20,7 @@
     (pattern ((~literal define-syntax) . _))
     (pattern ((~literal define-thunk) . _))
     (pattern ((~literal define-rec-thunk) . _))
+    (pattern ((~literal define-rec) . _))
     ))
 (define-syntax (module-begin syn)
   (syntax-parse syn
