@@ -4,14 +4,23 @@
          (for-syntax racket/base syntax/parse)
          (only-in turnstile define-primop))
 (provide (all-from-out "sbpv.rkt")
+         require for-syntax
+         define-syntax
          define-primop
          (rename-out [module-begin #%module-begin]
+                     [top-interaction #%top-interaction]
+                     [quoth quote]
                      [typed-define define]))
 
 (begin-for-syntax
   (define-syntax-class def
     (pattern ((~literal typed-define) . _))
-    (pattern ((~literal define-primop) . _))))
+    (pattern ((~literal define-primop) . _))
+    (pattern ((~literal require) . _))
+    (pattern ((~literal define-syntax) . _))
+    (pattern ((~literal define-thunk) . _))
+    (pattern ((~literal define-rec-thunk) . _))
+    ))
 (define-syntax (module-begin syn)
   (syntax-parse syn
     [(_ (~or d:def e) ...)
@@ -25,11 +34,11 @@
           d ...
           (main e) ...))]))
 
-#;
 (define-syntax (top-interaction syn)
-  (syntax-case syn
-      [(_ . e)
-       #`(#%top-interaction (bind (x e) (ret x)))]))
+  (syntax-parse syn
+    [(_ . d:def)
+     #`(#%top-interaction d)]
+    [(_ . e) #`(#%top-interaction e)]))
 ;; Notice
 ;; To install (from within the package directory):
 ;;   $ raco pkg install

@@ -45,9 +45,16 @@
 (require-wrapped-provide racket null?)
 (require-wrapped-provide racket/base car)
 (require-wrapped-provide racket/base cdr)
+(require-wrapped-provide racket/base equal?)
 
 ;; Values
-;; 
+;;
+
+(define-typed-syntax quoth
+  [(_ . e) ≫
+   -----------
+   (⊢ (quote- . e) ⇒ value)])
+
 (define-typed-syntax #%datum
   [(_ . d) ≫
    -----------------
@@ -88,6 +95,7 @@
   -----------------
   (⊢ (let- ([x- e-] ...) e^-)
      ⇒ computation))
+
 (define-typed-syntax let*
   [(_ () ebod) ≫
    --------------
@@ -111,7 +119,6 @@
   (⊢ es ≫ es- ⇐ value)
   ----------------------
   (⊢ (cons- e- es-) ⇒ value))
-
 
 (define-typed-syntax (zero? e) ≫
   (⊢ e ≫ e- ⇐ value)
