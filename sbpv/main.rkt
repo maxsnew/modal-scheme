@@ -4,7 +4,8 @@
          (for-syntax racket/base syntax/parse)
          (only-in turnstile define-primop))
 (provide (all-from-out "sbpv.rkt")
-         require for-syntax
+         require for-syntax only-in except-in
+         begin-for-syntax
          define-syntax
          define-primop
          (rename-out [module-begin #%module-begin]
@@ -21,6 +22,7 @@
     (pattern ((~literal define-thunk) . _))
     (pattern ((~literal define-rec-thunk) . _))
     (pattern ((~literal define-rec) . _))
+    (pattern ((~literal begin-for-syntax) . _))
     ))
 (define-syntax (module-begin syn)
   (syntax-parse syn

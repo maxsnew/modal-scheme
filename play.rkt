@@ -10,7 +10,9 @@
      (let ([self-app (thunk (λ (x) (! f (thunk (! x x)))))])
        ((! self-app) self-app))])))
 
-(require (for-syntax syntax/parse racket/base))
+(require (for-syntax syntax/parse
+                     (except-in racket/base quote)
+                     (only-in "sbpv/main.rkt" quote)))
 (define-syntax (do syn)
   (syntax-parse syn
     [(_ [x:id <- m] e es ...)
@@ -74,6 +76,19 @@
 (! const 3 4 5 6 7 8 9 10) ; 3
 (! const^ 3 4 5 6 7 8 9 10) ; 3
 
+
+(define-syntax (list syn)
+  (syntax-parse syn
+    [(_) #`'()]
+    [(_ e es ...)
+     #`(cons e (list es ...))]))
+(define first car)
+(define empty? null?)
+(define rest cdr)
+(define-thunk (! second lst)
+  (do [tl <- (! cdr lst)]
+      (! car tl)))
+
 ;; Infinite loop
 ; (! Y (thunk (λ (loop) (! loop))))
 
@@ -123,6 +138,7 @@
 
 ; dot-args : forall Y. (List ?v -> Y) -> Y
 (define dot-args grab-stack)
+(define-thunk (! List) (! dot-args pop1))
 
 ; rev-apply : (X -> ... -> ?c) -> (List X ...) -> ?c
 (define-rec-thunk (! rev-apply k xs)
@@ -191,83 +207,188 @@
     (! even?)))
 
 ;; Copattern matching
-;; A (simple) copattern decision tree (CDT) is represented by a
-;;   (list (U ?c) (Listof (list Pat CDT))
-;; where the car is the continuation for no arguments left
-;; and the cdr list is a list of patterns and the CDT to use if the
-;; pattern matches, which are processed *in order*.
-;;
-;; A pattern (Pat) is represented by one of
-;;   | 'var
-;;   | (cons 'lit ?v)
-;; where 'var represents a variable and 'lit says we check for
-;; equality with a datum
-;; later on we will add dot-args and dot-args upto
 
-(define-thunk (! second lst)
-  (do [tl <- (! cdr lst)]
-      (! car tl)))
+;; A copattern is a list of patterns, representing a pattern match on
+;; the stack.
+;; TODO: add ...-patterns
+;; A pattern is one of
+;;   'var - representing a
+;;   (list 'lit ?v) - representing a literal to be matched by equal?
+;;   TODO: add constructors (cons)
 
-;; done : U ?c
-;; decide : Listof (list Pat CDT)
-;; acc  : Listof ?v, the arguments in reverse order to the eventual continuation
-;;   TODO: for better error messages, make acc record the decisions made
-(define-thunk (! interp-tree cdt)
-  (letrec
-      ([interp-tree-loop
-        (thunk
-         (λ (done decide args)
-           (case-λ
-            [()
-             (! rev-apply done args)
-             ]
-            [(x)
-             (! try-alts decide args x)])))]
-       [try-alts
-        (thunk
-         (λ (decide args discrim)
-           (ifc (! null? decide)
-                (! abort 'copattern-match-error)
-                (do [hd <- (! car decide)]
-                    [decide^ <- (! cdr decide)]
-                  [pat <- (! car hd)]
-                  [pat-matched <- (! second hd)]
-                  (ifc (! symbol? pat)
-                       (! apply interp-tree-loop pat-matched (cons discrim args))
-                       (do [lit <- (! second pat)]
-                           (ifc (! equal? lit discrim)
-                                (! apply interp-tree-loop pat-matched args)
-                                (! try-alts decide^ args discrim))))))))])
-    (! apply interp-tree-loop cdt '())))
+(define copat-ex0 '())
+(define copat-ex1 '((lit hd) (lit tl) var))
+(define copat-ex2 '(var))
 
-(define-syntax (list syn)
+; copattern-match1 : Copattern Kont Kont List List -> ?c
+(define-rec-thunk (! copattern-match1 copat match-k abort-k popped bound)
+  (ifc
+   (! empty? copat)
+   (case-λ
+    [() (! rev-apply match-k bound)]
+    [(x) (! rev-apply abort-k (cons x popped))])
+   (case-λ
+    [() (! rev-apply abort-k popped)]
+    [(scrutinee)
+     (do [pat <- (! first copat)]
+         [copat^ <- (! rest copat)]
+       [popped^ <- (ret (cons scrutinee popped))]
+       (ifc (! equal? pat 'var)
+            (! copattern-match1 copat^ match-k abort-k popped^
+               (cons scrutinee bound))
+            (do [literal <- (! second pat)]
+                (ifc (! equal? literal scrutinee)
+                     (! copattern-match1 copat^ match-k abort-k popped^ bound)
+                     (! rev-apply abort-k popped^)))))])))
+
+(define-thunk (! test-fail) (! abort 'failure))
+(! copattern-match1
+   copat-ex0
+   (thunk (ret 'good-match0))
+   (thunk (! abort 'failureeeee))
+   '()
+   '())
+(! copattern-match1
+   '(var)
+   (thunk (ret 'good-match1))
+   (thunk (λ (x) (ret (list 'this-is-3 x))))
+   '(3)
+   '()
+   )
+(! copattern-match1
+   copat-ex0
+   (thunk (! Cons 'good-match2))
+   (thunk (! abort 'failure))
+   '(3)
+   '(3))
+(! copattern-match1
+   copat-ex2
+   (thunk (! Cons 'good-match3-its-5))
+   test-fail
+   '()
+   '()
+   5
+   )
+(! copattern-match1
+   '(var)
+   (thunk (! List 'good-match3-its-5))
+   test-fail
+   '(3)
+   '()
+   5
+   )
+(! copattern-match1
+   '(var)
+   (thunk (! List 'good-match3-its-3-5))
+   test-fail
+   '(3)
+   '(3)
+   5
+   )
+(! copattern-match1
+   '((lit 3))
+   (thunk (! List 'good-match-none))
+   test-fail
+   '()
+   '()
+   3
+   )
+(! copattern-match1
+   '((lit 3))
+   (thunk (! List 'good-match-5))
+   test-fail
+   '(5)
+   '(5)
+   3
+   )
+
+;; copattern-match : (Listof (List Copattern Kont)) -> Kont -> ?c
+(define-rec-thunk (! copattern-match copats abort)
+  (ifc (! null? copats)
+       (! abort)
+       (do [copat*kont <- (! first copats)]
+           [rest       <- (! rest copats)]
+         (! apply
+            copattern-match1
+            copat*kont
+            (thunk (! copattern-match rest abort))
+            '()
+            '()))))
+(define-thunk (! cpm-test-fail) (! List 'failure-called-with))
+(! copattern-match
+   (list)
+   (thunk (ret 'cpm-test-pass)))
+
+(! copattern-match
+   (list (list '() (thunk (! List 'cpm-test1-pass))))
+   test-fail
+   )
+(! copattern-match
+   (list (list '(var) (thunk (! List 'cpm-test2-pass-42)))
+         (list '() test-fail)
+         )
+   (thunk (! List 'failure))
+   42)
+(! copattern-match
+   (list (list '() test-fail)
+         (list '(var) (thunk (! List 'cpm-test2-pass-42))))
+   (thunk (! List 'failure))
+   42)
+(! copattern-match
+   (list (list '() test-fail)
+         (list '((lit 42)) (thunk (ret (list 'cpm-test2-pass)))))
+   (thunk (! List 'failure))
+   42)
+(! copattern-match
+   (list (list '() test-fail)
+         (list '((lit 43)) test-fail))
+   (thunk (! List 'cpm-test-pass-with-42))
+   42)
+(! copattern-match
+   (list (list '() test-fail)
+         (list '((lit 43)) test-fail)
+         (list '(var) (thunk (! Cons 'cpm-pass-with-42))))
+   cpm-test-fail
+   42)
+(! copattern-match
+   (list (list '() test-fail)
+         (list '((lit 43)) test-fail)
+         (list '(var 55) cpm-test-fail)
+         (list '(var) (thunk (! Cons 'cpm-pass-with-42)))
+         )
+   cpm-test-fail
+   42)
+
+(define-thunk (! bad-error-msg-copattern-match copats)
+  (! copattern-match
+     copats
+     (thunk (error "copattern match error\n I personally apologize for the bad error message -Max Stewart New"))))
+
+(begin-for-syntax
+  (define-syntax-class pat
+    #:attributes (pattern all-vars)
+    (pattern
+     x:id
+     #:attr pattern #''var
+     #:attr all-vars #'(x))
+    (pattern
+     e:expr
+     #:attr pattern #`(list 'lit e)
+     #:attr all-vars #'())
+    )
+  (define-syntax-class copat
+    #:attributes (patterns vars)
+    (pattern
+     (p:pat ...)
+     #:attr patterns #`(list p.pattern ...)
+     ;; #:when (displayln (syntax-e #`(p.all-vars ...)))
+     #:attr vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))))
+
+(define-syntax (copat syn)
   (syntax-parse syn
-    [(_) #`'()]
-    [(_ e es ...)
-     #`(cons e (list es ...))]))
+    [(_ [cop:copat e] ...)
+     ;; #:do ((displayln #'(cop.vars ...)))
+     ;; #`(list (list cop.patterns (thunk (λ cop.vars e))) ...)
+     #`(! bad-error-msg-copattern-match (list (list cop.patterns (thunk (λ cop.vars e))) ...))
+     ]))
 
-(define-rec-thunk (! List) (! dot-args pop1))
-
-(define matched0 (list (thunk (ret 'match0)) '()))
-(define matched1 (list (thunk (λ (x) (ret x))) '()))
-(! interp-tree
-   (cons (thunk (ret 'match))
-         (cons '() '())))
-(! interp-tree
-   (list (thunk (ret 'match0))
-         (list (list 'var matched1)))
-   'match1)
-(! interp-tree
-   (list (thunk (ret 'wrong))
-         (list (list '(lit foo)  matched1)))
-   'bar)
-
-(! interp-tree
-   (list (thunk (ret 'wrong))
-         (list (list '(lit foo) matched0)))
-   'foo)
-#;
-(define-thunk (! interp-tree cdt k)
-  (do [done <- (! car cdt)]
-      [decide <- (! cdr cdt)]
-    (! interp-tree-loop done decide '())))
