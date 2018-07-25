@@ -115,7 +115,7 @@
   [(_ (x xs ...) ebod) ≫
    ------------------
    [≻ (case-λ
-       [() (error "expected more arguments but didn't get them")]
+       [(#:bind) (error "expected more arguments but didn't get them")]
        [(x) (λ (xs ...) ebod)])]])
 
 (define-typed-syntax (cons e es) ≫
@@ -139,7 +139,7 @@
   (≻ (many-app (basic-! e) es ...)))
 
 
-(define-typed-syntax (case-λ [() e] [(x) ex]) ≫
+(define-typed-syntax (case-λ [(#:bind) e] [(x:id) ex]) ≫
   (⊢ e ≫ e- ⇐ computation)
   ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
   --------------------------------

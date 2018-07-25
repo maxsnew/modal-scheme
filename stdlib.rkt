@@ -1,18 +1,23 @@
 #lang sbpv
 
-;; Stdlib: todo, move to separate file
+(require (for-syntax syntax/parse
+                     (except-in racket/base quote)
+                     (only-in "sbpv/main.rkt" quote)))
+(provide Y do ifc define-rec-thunk define-thunk
+         pop1 Cons List .n .v $ swap const abort
+         list first second empty? rest grab-stack dot-args
+         List rev-apply apply grab-up-to
+         copat)
+
 ;; A Y combinator to get us moving
 (define Y
   (thunk
    (case-λ
-    [() (error "Y combinator expects one argument, but got none")]
+    [(#:bind) (error "Y combinator expects one argument, but got none")]
     [(f)
      (let ([self-app (thunk (λ (x) (! f (thunk (! x x)))))])
        ((! self-app) self-app))])))
 
-(require (for-syntax syntax/parse
-                     (except-in racket/base quote)
-                     (only-in "sbpv/main.rkt" quote)))
 (define-syntax (do syn)
   (syntax-parse syn
     [(_ [x:id <- m] e es ...)
@@ -60,21 +65,12 @@
 ; C combinator
 (define-thunk (! swap k x y) (! k y x))
 
-(define-rec-thunk (! const^ x)
+(define-rec-thunk (! const x)
   (case-λ
-   [() (ret x)]
-   [(_) (! const^ x)]))
-(define const
-  (thunk
-   (λ (x)
-     (let ([loop
-            (thunk
-             (λ (loop)
-               (case-λ [() (ret x)] [(y) (! loop)])))])
-       (! Y loop)))))
+   [(#:bind) (ret x)]
+   [(_) (! const x)]))
 (define abort const)
 (! const 3 4 5 6 7 8 9 10) ; 3
-(! const^ 3 4 5 6 7 8 9 10) ; 3
 
 
 (define-syntax (list syn)
@@ -94,7 +90,7 @@
 
 (define-rec-thunk (! sum-loop acc)
   (case-λ
-   [() (ret acc)]
+   [(#:bind) (ret acc)]
    [(x) (do [acc^ <- (! + x acc)]
             (! sum-loop acc^))]))
 
@@ -117,7 +113,7 @@
 ;; aka stack-foldl
 (define-rec-thunk (! stack-loop k acc cons)
   (case-λ
-   [() (! k acc)]
+   [(#:bind) (! k acc)]
    [(x)
     (do [acc^ <- (! cons x acc)]
         (! stack-loop k acc^ cons))]))
@@ -155,7 +151,7 @@
 ; loop-up-to : forall X. (X -> ?c) -> (X -> ?v -> ?c) -> (?v -> F Bool) -> X -> (U (?v -> X -> F X)) -> ?c
 (define-rec-thunk (! loop-up-to ran-out finish finished? acc step)
   (case-λ
-   [() (! ran-out acc)]
+   [(#:bind) (! ran-out acc)]
    [(x)
     (ifc (! finished? x)
          (! finish acc x)
@@ -208,13 +204,22 @@
 
 ;; Copattern matching
 
-;; A copattern is a list of patterns, representing a pattern match on
-;; the stack.
-;; TODO: add ...-patterns
+;; A copattern is either
+;;   a list of patterns (pat ...)
+;;   a list of patterns followed by #:bind (pat ... #:bind)
+;;, representing a pattern match on the stack.
+;;  If it ends with #:bind, it only matches if pat ... matches and
+;;  there are no more arguments.
+;;  If it does not end with #:bind, it matches when all of pat
+;;  ... matches, and keeps the remainder of the stack as is.
+
 ;; A pattern is one of
 ;;   'var - representing a
 ;;   (list 'lit ?v) - representing a literal to be matched by equal?
-;;   TODO: add constructors (cons)
+;;
+;; #:bind is a kind of pattern that matches the empty stack.
+;; TODO: add constructors (cons)
+;; TODO: add ...-patterns
 
 (define copat-ex0 '())
 (define copat-ex1 '((lit hd) (lit tl) var))
@@ -224,22 +229,25 @@
 (define-rec-thunk (! copattern-match1 copat match-k abort-k popped bound)
   (ifc
    (! empty? copat)
-   (case-λ
-    [() (! rev-apply match-k bound)]
-    [(x) (! rev-apply abort-k (cons x popped))])
-   (case-λ
-    [() (! rev-apply abort-k popped)]
-    [(scrutinee)
-     (do [pat <- (! first copat)]
-         [copat^ <- (! rest copat)]
-       [popped^ <- (ret (cons scrutinee popped))]
-       (ifc (! equal? pat 'var)
-            (! copattern-match1 copat^ match-k abort-k popped^
-               (cons scrutinee bound))
-            (do [literal <- (! second pat)]
-                (ifc (! equal? literal scrutinee)
-                     (! copattern-match1 copat^ match-k abort-k popped^ bound)
-                     (! rev-apply abort-k popped^)))))])))
+   (! rev-apply match-k bound)
+   (do [pat <- (! first copat)]
+       [copat^ <- (! rest copat)]
+     (ifc
+      (! equal? pat 'end)
+      (case-λ
+       [(#:bind) (! rev-apply match-k bound)]
+       [(x) (! rev-apply abort-k (cons x popped))])
+      (case-λ
+       [(#:bind) (! rev-apply abort-k popped)]
+       [(scrutinee)
+        (do [popped^ <- (ret (cons scrutinee popped))]
+            (ifc (! equal? pat 'var)
+                 (! copattern-match1 copat^ match-k abort-k popped^
+                    (cons scrutinee bound))
+                 (do [literal <- (! second pat)]
+                     (ifc (! equal? literal scrutinee)
+                          (! copattern-match1 copat^ match-k abort-k popped^ bound)
+                          (! rev-apply abort-k popped^)))))])))))
 
 (define-thunk (! test-fail) (! abort 'failure))
 (! copattern-match1
@@ -330,39 +338,56 @@
    (thunk (! List 'failure))
    42)
 (! copattern-match
-   (list (list '() test-fail)
+   (list (list '(end) test-fail)
          (list '(var) (thunk (! List 'cpm-test2-pass-42))))
    (thunk (! List 'failure))
    42)
 (! copattern-match
-   (list (list '() test-fail)
+   (list (list '(end) test-fail)
          (list '((lit 42)) (thunk (ret (list 'cpm-test2-pass)))))
    (thunk (! List 'failure))
    42)
 (! copattern-match
-   (list (list '() test-fail)
+   (list (list '(end) test-fail)
          (list '((lit 43)) test-fail))
    (thunk (! List 'cpm-test-pass-with-42))
    42)
 (! copattern-match
-   (list (list '() test-fail)
+   (list (list '(end) test-fail)
          (list '((lit 43)) test-fail)
          (list '(var) (thunk (! Cons 'cpm-pass-with-42))))
    cpm-test-fail
    42)
 (! copattern-match
-   (list (list '() test-fail)
+   (list (list '(end) test-fail)
          (list '((lit 43)) test-fail)
          (list '(var 55) cpm-test-fail)
          (list '(var) (thunk (! Cons 'cpm-pass-with-42)))
          )
    cpm-test-fail
    42)
+(define-rec-thunk (! map-loop f xs acc)
+  (ifc (! empty? xs)
+       (! reverse acc)
+       (do [x  <- (! first xs)]
+           [tl <- (! rest  xs)]
+         [y  <- (! f x)]
+         (! map-loop f tl (cons y acc)))))
+(define-rec-thunk (! map f xs) (! map-loop f xs '()))
 
-(define-thunk (! bad-error-msg-copattern-match copats)
+(define-thunk (! copattern-match-default-error copats)
   (! copattern-match
      copats
-     (thunk (error "copattern match error\n I personally apologize for the bad error message -Max Stewart New"))))
+     (thunk
+      (!
+       dot-args
+       (thunk
+        (λ (args)
+          (do [just-copats <- (! map first copats)]
+           (error 'copattern-match-error
+                  "Tried to match the arguments ~a\n\tAgainst the copatterns: ~a"
+                  args
+                  just-copats))))))))
 
 (begin-for-syntax
   (define-syntax-class pat
@@ -382,6 +407,11 @@
      (p:pat ...)
      #:attr patterns #`(list p.pattern ...)
      ;; #:when (displayln (syntax-e #`(p.all-vars ...)))
+     #:attr vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))
+    (pattern
+     (p:pat ... #:bind)
+     #:attr patterns #`(list p.pattern ... 'end)
+     ;; #:when (displayln (syntax-e #`(p.all-vars ...)))
      #:attr vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))))
 
 (define-syntax (copat syn)
@@ -389,6 +419,5 @@
     [(_ [cop:copat e] ...)
      ;; #:do ((displayln #'(cop.vars ...)))
      ;; #`(list (list cop.patterns (thunk (λ cop.vars e))) ...)
-     #`(! bad-error-msg-copattern-match (list (list cop.patterns (thunk (λ cop.vars e))) ...))
+     #`(! copattern-match-default-error (list (list cop.patterns (thunk (λ cop.vars e))) ...))
      ]))
-
