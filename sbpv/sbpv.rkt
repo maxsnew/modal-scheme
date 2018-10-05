@@ -50,6 +50,7 @@
 (require-wrapped-provide racket/base cdr)
 (require-wrapped-provide racket/base equal?)
 (require-wrapped-provide racket/base symbol?)
+(require-wrapped-provide racket/base string-append)
 
 ;; Values
 ;;

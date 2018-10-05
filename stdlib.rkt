@@ -3,7 +3,7 @@
 (require (for-syntax syntax/parse
                      (except-in racket/base quote)
                      (only-in "sbpv/main.rkt" quote)))
-(provide Y do ifc define-rec-thunk define-thunk
+(provide Y do do^ ifc define-rec-thunk define-thunk
          pop1 Cons List .n .v $ swap const abort
          list first second empty? rest grab-stack dot-args
          List rev-apply apply grab-up-to
@@ -25,6 +25,7 @@
     [(_ m) #`m]
     [(_ m e es ...)
      #`(bind (x m) (do e es ...))]))
+
 (define-syntax (ifc syn)
   (syntax-parse syn
     [(_ c e1 e2) #`(bind (x c) (if x e1 e2))]))
@@ -366,6 +367,7 @@
          )
    cpm-test-fail
    42)
+
 (define-rec-thunk (! map-loop f xs acc)
   (ifc (! empty? xs)
        (! reverse acc)
@@ -385,7 +387,7 @@
         (λ (args)
           (do [just-copats <- (! map first copats)]
            (error 'copattern-match-error
-                  "Tried to match the arguments ~a\n\tAgainst the copatterns: ~a"
+                  "Tried to match the arguments ~v\n\tAgainst the copatterns: ~v"
                   args
                   just-copats))))))))
 
@@ -396,6 +398,10 @@
      x:id
      #:attr pattern #''var
      #:attr all-vars #'(x))
+    (pattern
+     (= e:expr)
+     #:attr pattern #`(list 'lit e)
+     #:attr all-vars #'())
     (pattern
      e:expr
      #:attr pattern #`(list 'lit e)
@@ -421,3 +427,11 @@
      ;; #`(list (list cop.patterns (thunk (λ cop.vars e))) ...)
      #`(! copattern-match-default-error (list (list cop.patterns (thunk (λ cop.vars e))) ...))
      ]))
+
+(define-syntax (do^ syn)
+  (syntax-parse syn
+    [(_ [x:id ... <- m] e es ...)
+     #`(m (thunk (copat [(x ...) (do^ e es ...)])))]
+    [(_ m) #`m]))
+
+((copat [((= 3) x) (ret x)]) 3 #t)
