@@ -61,7 +61,7 @@
   (do [y <- (! g x)]
       (! f y)))
 
-(define-thunk (! $ f x) (! f x))
+(define-thunk (! $ f) (! f))
 
 ; C combinator
 (define-thunk (! swap k x y) (! k y x))
@@ -137,7 +137,7 @@
 (define dot-args grab-stack)
 (define-thunk (! List) (! dot-args pop1))
 
-; rev-apply : (X -> ... -> ?c) -> (List X ...) -> ?c
+; rev-apply : U(X -> ... -> ?c) -> List X -> ?c
 (define-rec-thunk (! rev-apply k xs)
   (ifc (! null? xs)
        (! k)
@@ -435,3 +435,17 @@
     [(_ m) #`m]))
 
 ((copat [((= 3) x) (ret x)]) 3 #t)
+
+; idiom is an implementation of "idiom brackets" ala applicative
+; functors.  Expects the stack to consist of a sequence of UF thunks,
+; the first of which is a function. Then idiom^ forces the thunks in
+; sequence and finally applies the function to the arguments in the
+; same order that they were on the stack originally. A simple
+; implementation of call-by-value as a macro in cbpv is to translate
+; subterms to thunks and translate ! to ! idiom.
+(define-rec-thunk (! idiom^ f)
+  (copat
+   [(th)
+    (do [x <- (! th)]
+        (! idiom^ (thunk (! f x))))]))
+(define-thunk (! idiom) (! idiom^ $))
