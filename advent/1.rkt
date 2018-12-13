@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "stdlib.rkt")
+(require "../stdlib.rkt")
 
 (define DIGITS (list #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
 
@@ -114,5 +114,5 @@
     [seen <- (! singleton 0)]
     (! search knotted 0 seen)
     ))
+; (! part2)
 
-(! part2)

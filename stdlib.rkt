@@ -71,7 +71,7 @@
    [(#:bind) (ret x)]
    [(_) (! const x)]))
 (define abort const)
-(! const 3 4 5 6 7 8 9 10) ; 3
+;(! const 3 4 5 6 7 8 9 10) ; 3
 
 
 (define-syntax (list syn)
@@ -96,10 +96,10 @@
             (! sum-loop acc^))]))
 
 (define-thunk (! sum) (! sum-loop 0))
-(! sum)
-(! sum 1)
-(! sum 1 1)
-(! sum 5 6 7 8) ; 26
+; (! sum)
+; (! sum 1)
+; (! sum 1 1)
+; (! sum 5 6 7 8) ; 26
 
 (define-rec-thunk (! rev-loop acc lst)
   (ifc (! null? lst)
@@ -108,7 +108,7 @@
            [tl <- (! cdr lst)]
          (! rev-loop (cons hd acc) tl))))
 (define-thunk (! reverse lst) (! rev-loop '() lst))
-(! reverse (cons 3 (cons 4 (cons 5 null))))
+; (! reverse (cons 3 (cons 4 (cons 5 null))))
 
 ;; stack-loop : forall X. (X -> ?c) -> X -> (U (?v -> X -> F X)) -> ?c
 ;; aka stack-foldl
@@ -122,7 +122,7 @@
 (define-thunk (! grab-rev-stack k)
   (! stack-loop k '() Cons))
 
-(! grab-rev-stack pop1 0 1 2 3 4 5)
+; (! grab-rev-stack pop1 0 1 2 3 4 5)
 
 (define-thunk (! grab-stack k)
   (! grab-rev-stack
@@ -131,7 +131,7 @@
         (do [stack <- (! reverse rev-stack)]
             (! k stack))))))
 
-(! grab-stack pop1 0 1 2 3 4 5)
+; (! grab-stack pop1 0 1 2 3 4 5)
 
 ; dot-args : forall Y. (List ?v -> Y) -> Y
 (define dot-args grab-stack)
@@ -159,6 +159,7 @@
          (bind (acc^ (! step acc x))
                (! loop-up-to ran-out finish finished? acc^ step)))]))
 
+#;
 (! loop-up-to
    (thunk (λ (xs) (bind (done (! Cons 'no-key xs))
                         (! abort done))))
@@ -180,7 +181,7 @@
        (thunk (! equal? prompt))
        '()
        (thunk (! swap Cons)))))
-
+#;
 (! grab-up-to
    (thunk (λ (up-to) (! dot-args
                         (thunk
@@ -251,12 +252,14 @@
                           (! rev-apply abort-k popped^)))))])))))
 
 (define-thunk (! test-fail) (! abort 'failure))
+#;
 (! copattern-match1
    copat-ex0
    (thunk (ret 'good-match0))
    (thunk (! abort 'failureeeee))
    '()
    '())
+#;
 (! copattern-match1
    '(var)
    (thunk (ret 'good-match1))
@@ -264,20 +267,22 @@
    '(3)
    '()
    )
+#;
 (! copattern-match1
    copat-ex0
    (thunk (! Cons 'good-match2))
    (thunk (! abort 'failure))
    '(3)
    '(3))
+#;
 (! copattern-match1
    copat-ex2
    (thunk (! Cons 'good-match3-its-5))
    test-fail
    '()
    '()
-   5
-   )
+   5)
+#;
 (! copattern-match1
    '(var)
    (thunk (! List 'good-match3-its-5))
@@ -286,6 +291,7 @@
    '()
    5
    )
+#;
 (! copattern-match1
    '(var)
    (thunk (! List 'good-match3-its-3-5))
@@ -294,6 +300,7 @@
    '(3)
    5
    )
+#;
 (! copattern-match1
    '((lit 3))
    (thunk (! List 'good-match-none))
@@ -302,6 +309,7 @@
    '()
    3
    )
+#;
 (! copattern-match1
    '((lit 3))
    (thunk (! List 'good-match-5))
@@ -324,41 +332,48 @@
             '()
             '()))))
 (define-thunk (! cpm-test-fail) (! List 'failure-called-with))
+#;
 (! copattern-match
    (list)
    (thunk (ret 'cpm-test-pass)))
-
+#;
 (! copattern-match
    (list (list '() (thunk (! List 'cpm-test1-pass))))
    test-fail
    )
+#;
 (! copattern-match
    (list (list '(var) (thunk (! List 'cpm-test2-pass-42)))
          (list '() test-fail)
          )
    (thunk (! List 'failure))
    42)
+#;
 (! copattern-match
    (list (list '(end) test-fail)
          (list '(var) (thunk (! List 'cpm-test2-pass-42))))
    (thunk (! List 'failure))
    42)
+#;
 (! copattern-match
    (list (list '(end) test-fail)
          (list '((lit 42)) (thunk (ret (list 'cpm-test2-pass)))))
    (thunk (! List 'failure))
    42)
+#;
 (! copattern-match
    (list (list '(end) test-fail)
          (list '((lit 43)) test-fail))
    (thunk (! List 'cpm-test-pass-with-42))
    42)
+#;
 (! copattern-match
    (list (list '(end) test-fail)
          (list '((lit 43)) test-fail)
          (list '(var) (thunk (! Cons 'cpm-pass-with-42))))
    cpm-test-fail
    42)
+#;
 (! copattern-match
    (list (list '(end) test-fail)
          (list '((lit 43)) test-fail)
@@ -433,7 +448,7 @@
     [(_ [x:id ... <- m] e es ...)
      #`(m (thunk (copat [(x ...) (do^ e es ...)])))]
     [(_ m) #`m]))
-
+#;
 ((copat [((= 3) x) (ret x)]) 3 #t)
 
 ; idiom is an implementation of "idiom brackets" ala applicative
