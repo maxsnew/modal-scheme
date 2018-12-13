@@ -6,8 +6,8 @@
 (provide Y do do^ ifc define-rec-thunk define-thunk
          pop1 Cons List .n .v $ swap const abort
          list first second empty? rest grab-stack dot-args
-         List rev-apply apply grab-up-to
-         copat)
+         List rev-apply apply reverse grab-up-to
+         copat length)
 
 ;; A Y combinator to get us moving
 (define Y
@@ -449,3 +449,13 @@
     (do [x <- (! th)]
         (! idiom^ (thunk (! f x))))]))
 (define-thunk (! idiom) (! idiom^ $))
+
+
+(define-rec-thunk (! length-loop acc xs)
+  (ifc (! null? xs)
+       (ret acc)
+       (do [acc <- (! + 1 acc)]
+           [xs <- (! cdr xs)]
+         (! length-loop acc xs))))
+
+(define-thunk (! length) (! length-loop 0))

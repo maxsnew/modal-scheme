@@ -23,6 +23,16 @@
          (define x-wrapped (rkt->sbpv x-tmp))
          (define-primop x x-wrapped : value)
          (provide x))]))
+(define-syntax (require-fo-wrapped-provide stx)
+  (syntax-parse stx
+    [(_ lib x)
+     #:with x-tmp (generate-temporary #'x)
+     #:with x-wrapped (generate-temporary #'x)
+     #'(begin-
+         (require (only-in lib [x x-tmp]))
+         (define x-wrapped (fo-rkt->sbpv x-tmp))
+         (define-primop x x-wrapped : value)
+         (provide x))]))
 
 (define-syntax (require-wrapped stx)
   (syntax-parse stx
@@ -39,18 +49,30 @@
     [(_ lib x)
      ]))
 
-(require-wrapped-provide racket/base +)
-(require-wrapped-provide racket zero?)
-(require-wrapped-provide racket/base -)
-(require-wrapped-provide racket/base not)
-(require-wrapped-provide racket cons?)
+(require-fo-wrapped-provide racket/base +)
+(require-fo-wrapped-provide racket/base *)
+(require-fo-wrapped-provide racket/base /)
+(require-fo-wrapped-provide racket zero?)
+(require-fo-wrapped-provide racket/base -)
+(require-fo-wrapped-provide racket/base not)
+(require-fo-wrapped-provide racket cons?)
 (require-wrapped-provide racket null)
-(require-wrapped-provide racket null?)
-(require-wrapped-provide racket/base car)
-(require-wrapped-provide racket/base cdr)
-(require-wrapped-provide racket/base equal?)
-(require-wrapped-provide racket/base symbol?)
-(require-wrapped-provide racket/base string-append)
+(require-fo-wrapped-provide racket null?)
+(require-fo-wrapped-provide racket/base car)
+(require-fo-wrapped-provide racket/base cdr)
+(require-fo-wrapped-provide racket/base equal?)
+(require-fo-wrapped-provide racket/base symbol?)
+(require-fo-wrapped-provide racket/base string-append)
+(require-fo-wrapped-provide racket/base read-line)
+(require-fo-wrapped-provide racket/base displayln)
+(require-fo-wrapped-provide racket/base string->list)
+(require-fo-wrapped-provide racket/base string?)
+(require-fo-wrapped-provide racket/base hash?)
+(require-fo-wrapped-provide racket/base hash)
+(require-fo-wrapped-provide racket/base hash-set)
+(require-fo-wrapped-provide racket/base hash-has-key?)
+(require-fo-wrapped-provide racket/base hash-count)
+
 
 ;; Values
 ;;

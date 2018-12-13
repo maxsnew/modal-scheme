@@ -1,23 +1,34 @@
 #lang racket/base
 
 (provide (struct-out foreign)
-         rkt->sbpv sbpv->rkt st)
+         rkt->sbpv sbpv->rkt fo-rkt->sbpv st)
 (define st (box '()))
 
 (struct foreign (payload))
 
-
-(define (datum? x)
+(define (sbpv-datum? x)
   (or (boolean? x)
       (number? x)
       (string? x)
       (symbol? x)
-      (null? x)))
+      (null? x)
+      (char? x)))
 ;; rkt->sbpv
+
+;; wraps first-order functions from racket to sbpv
+(define (fo-rkt->sbpv x)
+  (cond
+    [(procedure? x)
+     (λ ()
+       (define args (unbox st))
+       (set-box! st '())
+       (apply x args))]
+    [else (error 'fo-rkt->sbpv-is-for-fo-funs)]))
+
 ;; racket value -> sbpv value
 (define (rkt->sbpv x)
   (cond
-    [(datum? x) x]
+    [(sbpv-datum? x) x]
     [(pair? x) (cons (rkt->sbpv (car x)) (rkt->sbpv (cdr x)))]
     [(procedure? x)
      (λ ()
@@ -29,7 +40,7 @@
 ;; sbpv->rkt
 (define (sbpv->rkt x)
   (cond
-    [(datum? x) x]
+    [(sbpv-datum? x) x]
     [(pair? x) (cons (sbpv->rkt (car x))
                      (sbpv->rkt (cdr x)))]
     [(foreign? x) (foreign-payload x)]
