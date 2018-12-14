@@ -5,9 +5,11 @@
                      (only-in "sbpv/main.rkt" quote)))
 (provide Y do do^ ifc define-rec-thunk define-thunk
          pop1 Cons List .n .v $ swap const abort
-         list first second empty? rest grab-stack dot-args
+         list first second third empty? rest grab-stack dot-args
          List rev-apply apply reverse grab-up-to
-         copat length)
+         copat length Ret <<v <<n cond
+         and or foldl)
+
 
 ;; A Y combinator to get us moving
 (define Y
@@ -29,6 +31,12 @@
 (define-syntax (ifc syn)
   (syntax-parse syn
     [(_ c e1 e2) #`(bind (x c) (if x e1 e2))]))
+(define-syntax (cond syn)
+  (syntax-parse syn
+    [(_ [#:else e]) #`e]
+    [(_ [b e1] es ...) #`(ifc b e1 (cond es ...))]
+    [(_) #`(error 'cond-error "all cond conditions failed: TODO")]))
+
 (define-syntax (define-rec-thunk syn)
   (syntax-parse syn
     [(_ (! f:id x:id ...) e)
@@ -85,6 +93,10 @@
 (define-thunk (! second lst)
   (do [tl <- (! cdr lst)]
       (! car tl)))
+(define-thunk (! third lst)
+  (do [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      (! car lst)))
 
 ;; Infinite loop
 ; (! Y (thunk (λ (loop) (! loop))))
@@ -247,61 +259,90 @@
 ;; popped: all the arguments that have been popped off so far, in reverse order they were popped
 ;; bound: the arguments that have been popped and are bound by the pattern, in reverse order they were popped
 ; copattern-match1 : Copattern Kont Kont List List -> ?c
+(define-rec-thunk (! and)
+  (case-λ
+   [(#:bind) (ret #t)]
+   [(th)
+    (cond
+      [(! th) (! and)]
+      [#:else (! abort #f)])]))
+(define-rec-thunk (! or)
+  (case-λ
+   [(#:bind) (ret #f)]
+   [(th)
+    (cond
+      [(! th) (! abort #t)]
+      [#:else (! or)])]))
+
+(define-thunk (! end-pat? pat) (! equal? pat 'end))
+(define-thunk (! var-pat? pat) (! equal? pat 'var))
+(define-thunk (! lit-pat? pat)
+  (! and
+     (thunk (! cons? pat))
+     (thunk
+      (do [tag <- (! car pat)]
+          (! equal? 'lit tag)))))
+(define-thunk (! upto-pat? pat)
+  (! and
+     (thunk (! cons? pat))
+     (thunk
+      (do [tag <- (! car pat)]
+          (! equal? 'upto tag)))))
 (define-rec-thunk (! copattern-match1 copat match-k abort-k)
-  (ifc
-   (! empty? copat)
-   (! match-k)
-   (do [pat <- (! first copat)]
-       [copat^ <- (! rest copat)]
-     (ifc
-      (! equal? pat 'end)
-      (case-λ
-       [(#:bind) (! match-k)]
-       [(x) (! abort-k x)])
-      (case-λ
-       [(#:bind) (! abort-k)]
-       [(scrutinee)
-        (do [abort-k^scru <- (ret (thunk (! abort-k scrutinee)))]
-            (ifc (! equal? pat 'var)
-                 (! copattern-match1 copat^ (thunk (! match-k scrutinee)) abort-k^scru)
-                 ;; the pattern is tagged either 'lit or 'upto
-                 (do [tag <- (! first pat)]
-                     [literal <- (! second pat)]
-                   (ifc (! equal? tag 'lit)
-                        (ifc (! equal? literal scrutinee)
-                             (! copattern-match1 copat^ match-k abort-k^scru)
-                             (! abort-k^scru))
-                        ;; 'upto
-                        (! up-to-lit
-                           (thunk (λ (abort-k xs)
-                                    (! copattern-match1
-                                       copat^
-                                       (thunk (! match-k xs))
-                                       abort-k)))
-                           abort-k
-                           literal
-                           '()
-                           scrutinee)))))])))))
+  (cond
+    [(! empty? copat) (! match-k)]
+    [#:else
+     (do [pat <- (! first copat)]
+         [copat <- (! rest copat)]
+       (cond
+         [(! end-pat? pat) (case-λ [(#:bind) (! match-k)] [(x) (! abort-k x)])]
+         [(! var-pat? pat)
+          (case-λ
+           [(#:bind) (! abort-k)]
+           [(x) (! copattern-match1 copat (thunk (! match-k x)) (thunk (! abort-k x)))])]
+         [(! lit-pat? pat)
+          (do [literal <- (! second pat)]
+              (case-λ
+               [(#:bind) (! abort-k)]
+               [(x)
+                (cond
+                  [(! equal? x literal)
+                   (! copattern-match1 copat match-k (thunk (! abort-k x)))]
+                  [#:else (! abort-k x)])]))]
+         [(! upto-pat? pat)
+          (do [literal <- (! second pat)]
+              (! up-to-lit
+                 (thunk (λ (abort-k xs)
+                          (! copattern-match1 copat (thunk (! match-k xs)) abort-k)))
+                 abort-k
+                 literal
+                 '()))]))]))
 
 (define-thunk (! test-fail) (! abort 'failure))
 
+
+#;
 (! copattern-match1
    copat-ex0
    (thunk (ret 'good-match0))
    (thunk (! abort 'failureeeee)))
 
+
+#;
 (! copattern-match1
    copat-ex2
    (thunk (! Cons 'good-match3-its-5))
    test-fail
    5)
 
+#;
 (! copattern-match1
    '((lit 3))
    (thunk (! List 'good-match-none))
    test-fail
    3
    )
+#;
 (! copattern-match1
    '((upto 3))
    (thunk (! List 'good-match-none))
@@ -470,3 +511,35 @@
          (! length-loop acc xs))))
 
 (define-thunk (! length) (! length-loop 0))
+
+(define-thunk (! Ret x) (ret x))
+(define-rec-thunk (! <<v-impl k)
+  (copat
+   [(f (upto xs 'o))
+    (let ([k (thunk (λ (y)
+                      (do [z <- (! apply f xs y)]
+                          (! k z))))])
+      (! <<v-impl k))]
+   [(f (upto xs '$))
+    (do [z <- (! apply f xs)]
+        (! k z))]))
+
+(define-thunk (! <<v) (! <<v-impl Ret))
+
+(define-rec-thunk (! <<n-impl k)
+  (copat
+   [(f (upto xs 'o))
+    (let ([k (thunk (λ (y) (! k (thunk (! apply f xs k)))))])
+      (! <<n-impl k))]
+   [(f (upto xs '$))
+    (! k (thunk (! apply f xs)))]))
+(define-thunk (! <<n) (! <<n-impl $))
+
+(define-rec-thunk (! foldl l step acc)
+  (cond
+    [(! empty? l) (ret acc)]
+    [#:else
+     (do [x <- (! car l)]
+         [xs <- (! cdr l)]
+       [acc <- (! step acc x)]
+       (! foldl xs step acc))]))
