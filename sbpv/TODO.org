@@ -5,7 +5,14 @@
      3. [ ] require/provide with Racket, wrapped
      4. [ ] macros work
   2. [ ] New name
-  3. [ ] Implement dot args, apply, general case-lambda as macros in
+  3. [X] Implement dot args, apply, general case-lambda as macros in
      SBPV
   4. [ ] Implement some codata: streams, Haskell lists, parser
      combinator library
+* TODO Copattern Matching
+  - [X] Add literal matching
+  - [X] Add capture up to a literal
+* TODO Macros
+  - [ ] cond
+* TODO Functions
+  - [ ] CBV currying composition
