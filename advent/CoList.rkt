@@ -49,6 +49,7 @@
 (define-rec-thunk (! list<-colist c)
   (! <<v reverse 'o cl-foldl c (thunk (! swap Cons)) '() '$))
 
+#;
 (do [c <- (ret (thunk (! colist<-list (list 1 2))))]
     [c^ <- (ret (thunk (! cl-map Ret c)))]
     (! list<-colist c^))

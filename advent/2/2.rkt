@@ -1,8 +1,8 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "table.rkt")
-(require "CoList.rkt")
+(require "../../stdlib.rkt")
+(require "../table.rkt")
+(require "../CoList.rkt")
 
 (define-rec-thunk (! slurp-lines)
   (copat

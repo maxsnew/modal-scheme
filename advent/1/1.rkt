@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "Stream.rkt")
+(require "../../stdlib.rkt")
+(require "../Stream.rkt")
 
 (define DIGITS (list #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
 
