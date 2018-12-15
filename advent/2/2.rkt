@@ -100,6 +100,54 @@
         cl-map (thunk (! <<v pick-23s 'o count-occs 'o string->list '$)) ls '$)]
     #;(! apply * sum-23s)
     ))
-(! main2-1)
+;; (! main2-1)
 
-;
+;; Need to find 2 words in the list that have exactly one letter not in common:
+;; State: list of words seen so far
+;;   for each word, check to see if it matches any of the previous ones
+;;   otherwise push it onto the stack and continue
+;; To see if it matches: both should be represented as lists of characters
+;;   do a zipwith equal? where #t -> 0 and #f -> 1 and then do an apply +
+
+(define-thunk (! nat-equal? x y)
+  (ifc (! equal? x y)
+       (ret 0)
+       (ret 1)))
+
+;; Listof A -> Listof A -> Nat
+(define-thunk (! compare-words xs ys)
+  (! <<v apply + 'o zipwith nat-equal? xs ys '$))
+
+;; find-match : (List Char) -> List (List Char) -> #f or (List (List Char) (List Char))
+(define-rec-thunk (! find-match cand seen)
+  (cond
+    [(! empty? seen) (ret #f)]
+    [#:else
+     (do [hd <- (! car seen)]
+         [seen <- (! cdr seen)]
+       (cond
+         [(! <<v equal? 1 'o compare-words cand hd '$)
+          (ret (list cand hd))]
+         [#:else
+          (! find-match cand seen)]))]))
+
+;; search : CoList (List Char) -> List (List Char) -> (List (List Char) (List Char))
+(define-rec-thunk (! search clines seen)
+  (do [v <- (! clines)]
+      [hd <- (! clv-hd v)]
+    [clines <- (! clv-tl v)]
+    [match? <- (! find-match hd seen)]
+    (cond
+      [(ret match?) (ret match?)]
+      [#:else (! search clines (cons hd seen))])))
+
+(define-thunk (! main2-2)
+  (do [ls <- (! slurp-lines)]
+      [clines <- (ret (thunk (! cl-map string->list (thunk (! colist<-list ls)))))]
+    [matches <- (! search clines '())]
+    [zipped <- (! apply (thunk (! zipwith List)) matches)]
+    [eqs    <- (! filter (thunk (! apply equal?)) zipped)]
+    (! <<v list->string 'o map first eqs '$)))
+
+(! main2-2)
+;; TODO: use <<n composition

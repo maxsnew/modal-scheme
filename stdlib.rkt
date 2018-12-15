@@ -8,7 +8,7 @@
          list first second third empty? rest grab-stack dot-args
          List rev-apply apply reverse grab-up-to
          copat length Ret <<v <<n cond
-         and or foldl)
+         and or foldl map filter)
 
 
 ;; A Y combinator to get us moving
@@ -543,3 +543,23 @@
          [xs <- (! cdr l)]
        [acc <- (! step acc x)]
        (! foldl xs step acc))]))
+
+;; (define-rec-thunk (! map f l)
+;;   (! <<v reverse 'o
+;;      foldl l
+;;      (thunk
+;;       (copat
+;;        [(acc x)
+;;         (do [y <- (! f x)]
+;;             (ret (cons y acc)))]))
+;;      '() '$))
+
+(define-rec-thunk (! filter p xs)
+  (cond
+    [(! empty? xs) (ret '())]
+    [#:else
+     (do [x <- (! car xs)]
+         [xs <- (! <<v filter p 'o cdr xs '$)]
+       (ifc (! p x)
+            (ret (cons x xs))
+            (ret xs)))]))

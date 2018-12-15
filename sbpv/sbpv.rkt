@@ -66,6 +66,7 @@
 (require-fo-wrapped-provide racket/base read-line)
 (require-fo-wrapped-provide racket/base displayln)
 (require-fo-wrapped-provide racket/base string->list)
+(require-fo-wrapped-provide racket/base list->string)
 (require-fo-wrapped-provide racket/base string?)
 (require-fo-wrapped-provide racket/base hash?)
 (require-fo-wrapped-provide racket/base hash)
