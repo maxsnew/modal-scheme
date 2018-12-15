@@ -228,7 +228,7 @@
 
 (module+ test
   (require
-    turnstile/rackunit-typechecking
+    rackunit/turnstile
     rackunit)
   
   (check-type #t : value)
