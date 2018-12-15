@@ -69,8 +69,6 @@
   (do [y <- (! g x)]
       (! f y)))
 
-(define-thunk (! $ f) (! f))
-
 ; C combinator
 (define-thunk (! swap k x y) (! k y x))
 
@@ -488,6 +486,8 @@
 #;
 ((copat [((= 3) x) (ret x)]) 3 #t)
 
+(define-thunk (! $) (copat [(f) (! f)] [() (error 'foobar)]))
+
 ; idiom is an implementation of "idiom brackets" ala applicative
 ; functors.  Expects the stack to consist of a sequence of UF thunks,
 ; the first of which is a function. Then idiom^ forces the thunks in
@@ -526,14 +526,21 @@
 
 (define-thunk (! <<v) (! <<v-impl Ret))
 
-(define-rec-thunk (! <<n-impl k)
+(define-rec-thunk (! <<n-impl)
   (copat
-   [(f (upto xs 'o))
-    (let ([k (thunk (λ (y) (! k (thunk (! apply f xs k)))))])
+   [(k f (upto xs 'o))
+    (let ([k (thunk (copat [(y) (! k (thunk (! apply f xs y)))]))])
       (! <<n-impl k))]
-   [(f (upto xs '$))
+   [(k f (upto xs '$))
     (! k (thunk (! apply f xs)))]))
 (define-thunk (! <<n) (! <<n-impl $))
+
+(define-thunk (! beep) (ret "beep"))
+(define-thunk (! fc)
+  (copat
+   [(th) (! th)]))
+;(! <<n fc 'o beep '$)
+
 
 (define-rec-thunk (! foldl l step acc)
   (cond

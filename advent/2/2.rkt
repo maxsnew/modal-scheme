@@ -62,45 +62,22 @@
        (ret (cons z zs)))]))
 
 ;; add-23s: sum up the co-list of 2-3 pairs
-(define-thunk (! add-23s l)
-  (! cl-foldl l (thunk (! zipwith +)) (list 0 0)))
+;; U (CoList (List Nat Nat)) -> F (List Nat Nat)
+;; both cbn and cbv
+(define-thunk (! add-23s)
+  (copat
+   [(l)
+    (! cl-foldl l (thunk (! zipwith +)) (list 0 0))]
+   ))
 
+(define-thunk (! calc-23s)
+  (copat
+   [(s) (! <<v pick-23s 'o count-occs empty-table 'o string->list s '$)]))
 (define-thunk (! main2-1)
   (do [ls <- (! slurp-lines)]
-      [clines <- (ret (thunk (! colist<-list ls)))]
-    [cmapped <- (ret (thunk
-                      (! cl-map
-                         (thunk (λ (x)
-                                  (! <<v
-                                     pick-23s 'o
-                                     count-occs empty-table 'o
-                                     string->list x '$
-                                     )))
-                         clines)))]
-    [cts <- (! add-23s cmapped)]
-    (! apply * cts )
-    #;
-    (! <<n
-       cl-map Ret
-       #;
-       (thunk (λ (x)
-                (! <<v
-                   ;; pick-23s 'o
-                   ;; count-occs empty-table 'o
-                   string->list x '$
-                   ))) 'o
-       colist<-list ls '$)
-    #;
-    (! <<n add-23s 'o
-       cl-map (thunk (! <<v pick-23s 'o count-occs 'o string->list '$)) ls '$)
-    #;
-    [sum-23s
-     <-
-     (! <<n add-23s 'o
-        cl-map (thunk (! <<v pick-23s 'o count-occs 'o string->list '$)) ls '$)]
-    #;(! apply * sum-23s)
-    ))
-;; (! main2-1)
+      [cts <- (! <<n add-23s 'o cl-map calc-23s 'o colist<-list ls '$)]
+    (! apply * cts)))
+;(! main2-1)
 
 ;; Need to find 2 words in the list that have exactly one letter not in common:
 ;; State: list of words seen so far
@@ -132,22 +109,24 @@
           (! find-match cand seen)]))]))
 
 ;; search : CoList (List Char) -> List (List Char) -> (List (List Char) (List Char))
-(define-rec-thunk (! search clines seen)
+(define-rec-thunk (! search seen clines)
   (do [v <- (! clines)]
       [hd <- (! clv-hd v)]
     [clines <- (! clv-tl v)]
     [match? <- (! find-match hd seen)]
     (cond
       [(ret match?) (ret match?)]
-      [#:else (! search clines (cons hd seen))])))
+      [#:else (! search (cons hd seen) clines)])))
 
 (define-thunk (! main2-2)
   (do [ls <- (! slurp-lines)]
-      [clines <- (ret (thunk (! cl-map string->list (thunk (! colist<-list ls)))))]
-    [matches <- (! search clines '())]
-    [zipped <- (! apply (thunk (! zipwith List)) matches)]
-    [eqs    <- (! filter (thunk (! apply equal?)) zipped)]
-    (! <<v list->string 'o map first eqs '$)))
+      [matches <-
+       (! <<n search '() 'o cl-map string->list 'o colist<-list ls '$)]
+    (! <<v
+       list->string 'o
+       map first 'o
+       filter (thunk (! apply equal?)) 'o
+       apply (thunk (! zipwith List)) matches '$)))
 
 (! main2-2)
-;; TODO: use <<n composition
+
