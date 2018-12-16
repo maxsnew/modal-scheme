@@ -19,6 +19,8 @@
 ;; cl-cons : A -> U CoList A -> FU CoList A
 (define-thunk (! cl-cons)
   (copat [(hd tl) (ret (thunk (ret (list 'cons hd tl))))]))
+(define-thunk (! clv-cons)
+  (copat [(hd tl) (ret (list 'cons hd tl))]))
 
 ;; CBN function:
 ;; U(A -> F B) -> U(CoList A) -> CoList A
@@ -49,7 +51,7 @@
    [(l cons nil)
     (do [v <- (! l)]
         (cond
-          [(! empty? v) (ret nil)]
+          [(! clv-nil? v) (! nil)]
           [#:else
            (do [hd <- (! clv-hd v)]
                [tl <- (! clv-tl v)]
@@ -113,3 +115,5 @@
              (thunk
               (copat [(y) (ret (list x y))]))
              l2)])))]))
+
+(! cartesian-product (thunk (! range 0 3)) (thunk (! range 5 6)))
