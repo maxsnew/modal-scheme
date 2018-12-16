@@ -3,15 +3,7 @@
 (require "../../stdlib.rkt")
 (require "../table.rkt")
 (require "../CoList.rkt")
-
-(define-rec-thunk (! slurp-lines)
-  (copat
-   [(#:bind) (! slurp-lines '())]
-   [(so-far)
-    (do [l <- (! read-line)]
-        (cond
-          [(! .v not string? l) (ret so-far)]
-          [#:else (! slurp-lines (cons l so-far))]))]))
+(require "../IO.rkt")
 
 (define-thunk (! add1 x) (! + 1 x))
 (define-rec-thunk (! count-occs t s)

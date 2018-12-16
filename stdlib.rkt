@@ -6,7 +6,7 @@
 (provide Y do do^ ifc define-rec-thunk define-thunk
          pop1 Cons List .n .v $ swap const abort
          list first second third empty? rest grab-stack dot-args
-         List rev-apply apply reverse grab-up-to
+         rev-apply apply reverse grab-up-to
          copat length Ret <<v <<n cond
          and or foldl map filter)
 
