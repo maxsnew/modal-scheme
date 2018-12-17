@@ -3,7 +3,7 @@
 (require "../stdlib.rkt")
 (provide clv-nil? clv-cons? clv-hd clv-tl
          colist<-list
-         cl-map bind cl-foldr cl-filter
+         cl-map bind cl-foldr cl-filter any?
          cl-foldl cl-foldl^ cl-length list<-colist cl-foreach
          range cartesian-product)
 ;; CoList A = F (CoListVert A)
@@ -149,3 +149,6 @@
 #;
 (define-thunk (! monoid-foldl)
   (copat [(* e c) (! cl-foldl c )]))
+
+(define-thunk (! any?)
+  (copat [(c) (! cl-foldr c or (~ (ret #f)))]))

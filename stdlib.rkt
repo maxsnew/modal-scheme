@@ -8,9 +8,10 @@
          list first second third fourth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
          copat length Ret <<v <<n cond
-         and or foldl map filter)
+         and or foldl map filter ~)
 
-
+(define-syntax (~ syn)
+  (syntax-parse syn [(_ e) #'(thunk e)]))
 ;; A Y combinator to get us moving
 (define Y
   (thunk

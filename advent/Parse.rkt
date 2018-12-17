@@ -1,9 +1,28 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-(provide parse-num)
+(require "CoList.rkt")
+(provide parse-num upper-case? letter?)
 
+(define UPPERS "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+(define DOWNERS "abcdefghijklmnopqrstuvwxyz")
+(define LETTERS "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 (define DIGITS (list #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
+
+(define-thunk (! letter?)
+  ((copat [((= 'letter?) c)
+           (do [letters <- (! string->list LETTERS)]
+               (! <<n any? 'o
+                  cl-map (~ (λ (C) (ret (~ (! equal? c C))))) 'o 
+                  colist<-list letters '$))
+           ]) 'letter?))
+
+(define-thunk (! upper-case?)
+  (copat [(c)
+          (do [uppers <- (! string->list UPPERS)]
+              (! <<n any? 'o
+                 cl-map (~ (λ (C) (ret (~ (! equal? c C))))) 'o 
+                 colist<-list uppers '$))]))
 
 (define-rec-thunk (! digit<-char-loop c n ds)
   (do [d <- (! car ds)]
