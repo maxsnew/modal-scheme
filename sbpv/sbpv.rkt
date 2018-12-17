@@ -60,6 +60,7 @@
 (require-fo-wrapped-provide racket/base >)
 (require-fo-wrapped-provide racket/base >=)
 (require-fo-wrapped-provide racket/base not)
+(require-fo-wrapped-provide racket number?)
 (require-fo-wrapped-provide racket cons?)
 (require-wrapped-provide racket null)
 (require-fo-wrapped-provide racket null?)
@@ -76,6 +77,7 @@
 (require-fo-wrapped-provide racket/base hash?)
 (require-fo-wrapped-provide racket/base hash)
 (require-fo-wrapped-provide racket/base hash-set)
+(require-fo-wrapped-provide racket/base append)
 (require-fo-wrapped-provide racket/base hash-ref)
 (require-fo-wrapped-provide racket/base hash-has-key?)
 (require-fo-wrapped-provide racket/base hash-count)
@@ -86,7 +88,7 @@
 (require-fo-wrapped-provide racket/base vector-ref)
 (require-fo-wrapped-provide racket/base vector-set!)
 (require-fo-wrapped-provide racket/base list->vector)
-
+(require-wrapped-provide racket/base sort)
 
 ;; Values
 ;;

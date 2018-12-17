@@ -35,6 +35,3 @@
 #;
 (do [t <- (! <<v table<-hash~ 'o hash 'x 5 'y 16 '$)]
     (! update t 'z 0 +))
-
-
-

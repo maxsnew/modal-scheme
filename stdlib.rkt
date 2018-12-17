@@ -5,7 +5,7 @@
                      (only-in "sbpv/main.rkt" quote)))
 (provide Y do do^ ifc define-rec-thunk define-thunk
          pop1 Cons List .n .v $ swap const abort
-         list first second third empty? rest grab-stack dot-args
+         list first second third fourth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
          copat length Ret <<v <<n cond
          and or foldl map filter)
@@ -93,6 +93,11 @@
       (! car tl)))
 (define-thunk (! third lst)
   (do [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      (! car lst)))
+(define-thunk (! fourth lst)
+  (do [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
       [lst <- (! cdr lst)]
       (! car lst)))
 
