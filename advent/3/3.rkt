@@ -65,83 +65,79 @@
   (copat
    [(s)
     (! <<v apply parse-loop 'o string->list s '$)]))
-
-;; A Shape is
-;; We assume Shapes all lie in 1000x1000
-;; codata Shape where
-;;   'contains? : Coordinate -> F Bool
-(define-thunk (! shape<-rect)
+(define WIDTH  1000)
+(define HEIGHT 1000)
+(define-thunk (! mk-region)
+  (! <<v make-vector 'o * WIDTH HEIGHT '$))
+(define-thunk (! region-ref)
   (copat
-   [(r (= 'contains?) pt)
-    (do [rx <- (! <<v c-x 'o r-coordinates r '$)]
-        [ry <- (! <<v c-y 'o r-coordinates r '$)]
-      [rw <- (! <<v s-width 'o r-size r '$)]
-      [rh <- (! <<v s-height 'o r-size r '$)]
-      [ptx <- (! c-x pt)]
-      [pty <- (! c-y pt)]
-      (! and
-         (thunk (! <= rx ptx))
-         (thunk (! <<v < ptx 'o + rx rw '$))
-         (thunk (! <= ry pty))
-         (thunk (! <<v < pty 'o + ry rh '$))))]))
+   [(r pt)
+    (do [x <- (! c-x pt)] [y <- (! c-y pt)]
+      [i <- (! <<v + x 'o * WIDTH y '$)]
+      (! vector-ref r i))]))
 
-(define-thunk (! sh-union)
+(define-thunk (! inc-pt)
   (copat
-   [(s1 s2 (= 'contains?) pt)
-    (! or
-       (thunk (! s1 'contains? pt))
-       (thunk (! s2 'contains? pt)))]))
-(define-thunk (! sh-intersect)
+   [(r pt)
+    (do [x <- (! c-x pt)] [y <- (! c-y pt)]
+      [i <- (! <<v + x 'o * WIDTH y '$)]
+      [v <- (! vector-ref r i)]
+      (! <<v vector-set! r i 'o + 1 v '$))]))
+
+(define-thunk (! coords<-rect)
   (copat
-   [(s1 s2 (= 'contains?) pt)
-    (! and
-       (thunk (! s1 'contains? pt))
-       (thunk (! s2 'contains? pt)))]))
-(define-thunk (! sh-empty)
-  (copat [((= 'contains?) pt) (ret #f)]))
+   [(r)
+    (do [x <- (! <<v c-x 'o r-coordinates r '$)]
+        [y <- (! <<v c-y 'o r-coordinates r '$)]
+      [w <- (! <<v s-width 'o r-size r '$)]
+      [h <- (! <<v s-height 'o r-size r '$)]
+      [x+ <- (! + x w)]
+      [y+ <- (! + y h)]
+      (! <<n
+         cl-map (thunk (! apply mk-coord)) 'o
+         cartesian-product (thunk (! range x x+)) (thunk (! range y y+)) '$))]))
 
-;; Algorithm: State is two shapes:
-;;   used: one covering everywhere that's been used
-;;   used-2: and one covering everywhere that's been used twice
-;; repeatedly get a new rectangle r:
-;;   update: now (r \/ used) is used
-;;   update: now ((r /\ used) \/ used-2) is used at least twice
-;; need to support:
-;;   union of two shapes (every round)
-;;   union of a shape and a rectangle 
-;;   intersection of a shape with a rectangle
-;;   how many points are in an area (once at the end)
-(define-thunk (! comb-pair)
+(define-thunk (! colist<-region)
   (copat
-   [(shs sh)
-    (do [all-touched <- (! first shs)]
-        [touched-2ce <- (! second shs)]
-      (ret (list (thunk (! sh-union sh all-touched))
-                 (thunk (! sh-union
-                           touched-2ce
-                           (thunk (! sh-intersect sh all-touched)))))))]))
+   [(r)
+    (do [len <- (! * WIDTH HEIGHT)]
+        (! <<n
+           cl-map (thunk (! vector-ref r))'o 
+           range 0 len '$))]))
 
-(define-thunk (! crush)
-  (copat [(l) (! cl-foldl l comb-pair (list sh-empty sh-empty))]))
-
-(define-thunk (! all-coordinates)
-  (! cl-map (thunk (! apply mk-coord))
-     (thunk (! cartesian-product
-               (thunk (! range 0 1000))
-               (thunk (! range 0 1000))))))
+(define-thunk (! fill-region)
+  (copat
+   [(reg rect)
+    (! <<n
+       cl-foreach (thunk (! inc-pt reg)) 'o
+       coords<-rect rect '$)]))
 
 (define-thunk (! main3-1)
   (do [ls <- (! slurp-lines)]
-      [touched*twice <-
-       (! <<n crush 'o
-           cl-map (thunk (copat [(r) (ret (thunk (! shape<-rect r)))])) 'o
+      [arr <- (! mk-region)]
+      [_ <-
+         (! <<n
+            cl-foreach (thunk (! fill-region arr)) 'o
            cl-map parse-rect 'o
            colist<-list ls '$)]
-    [twice-touched <- (! second touched*twice)]
-    (! <<n cl-length 'o
-       cl-filter Ret 'o
-       cl-map (thunk (copat [(pt) (! twice-touched 'contains? pt)]))
-       all-coordinates '$)
-    ; (! twice-touched 'contains? (list 'coord 'x 5 'y 5))
-    ))
-(! main3-1)
+      (! <<n cl-length 'o
+         cl-filter (thunk (λ (x) (! >= x 2))) 'o
+         colist<-region arr '$)))
+
+(define-thunk (! disjoint)
+  (copat
+   [(reg rect)
+    (! <<n
+       (thunk (λ (c) (! cl-foldr c and (thunk (ret #t))))) 'o
+     cl-map (thunk (λ (pt) (ret (thunk  (! <<v equal? 1 'o region-ref reg pt '$))))) 'o
+     coords<-rect rect '$)]))
+
+(define-thunk (! main3-2)
+  (do [ls <- (! slurp-lines)]
+      [arr <- (! mk-region)]
+    [rects <- (ret (thunk (! <<n cl-map parse-rect 'o colist<-list ls '$)))]
+    [_ <- (! cl-foreach (thunk (! fill-region arr)) rects)]
+    (! <<v
+       clv-hd 'o 
+       cl-filter (thunk (λ (rect) (! disjoint arr rect))) rects '$)))
+(! main3-2)

@@ -80,6 +80,12 @@
 (require-fo-wrapped-provide racket/base hash-has-key?)
 (require-fo-wrapped-provide racket/base hash-count)
 (require-fo-wrapped-provide racket/base hash->list)
+;; mutable vector stuff
+(require-fo-wrapped-provide racket/base make-vector)
+(require-fo-wrapped-provide racket/base vector?)
+(require-fo-wrapped-provide racket/base vector-ref)
+(require-fo-wrapped-provide racket/base vector-set!)
+(require-fo-wrapped-provide racket/base list->vector)
 
 
 ;; Values

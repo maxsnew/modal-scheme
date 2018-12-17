@@ -4,7 +4,7 @@
 (provide clv-nil? clv-cons? clv-hd clv-tl
          colist<-list
          cl-map bind cl-foldr cl-filter
-         cl-foldl cl-length list<-colist
+         cl-foldl cl-length list<-colist cl-foreach
          range cartesian-product)
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
@@ -81,8 +81,16 @@
          [xs <- (! cdr xs)]
        (ret (list 'cons x (thunk (! colist<-list xs)))))]))
 
-(define-rec-thunk (! list<-colist c)
+(define-thunk (! list<-colist c)
   (! <<v reverse 'o cl-foldl c (thunk (! swap Cons)) '() '$))
+
+;; cl-foreach : CoList A -> (A -> F 1) -> F 1
+(define-thunk (! cl-foreach)
+  (copat [(f c)
+          (! cl-foldl
+             c
+             (thunk (copat [(acc x) (do [_ <- (! f x)] (ret acc)) ]))
+             '())]))
 
 #;
 (do [c <- (ret (thunk (! colist<-list (list 1 2))))]
@@ -104,7 +112,6 @@
 ;; cl-append : U CoList A -> U CoList A -> CoList A
 (define-rec-thunk (! cl-append)
   (copat [(l1 l2) (! cl-foldr l1 clv-cons l2)]))
-
 
 ;; cl-bind : CoList A -> (A -> CoList A') -> CoList A'
 (define-thunk (! cl-bind)
