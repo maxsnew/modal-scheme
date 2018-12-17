@@ -2,7 +2,7 @@
 
 (require "../stdlib.rkt")
 (require "CoList.rkt")
-(provide parse-num upper-case? letter?)
+(provide parse-num upper-case? letter? UPPERS)
 
 (define UPPERS "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 (define DOWNERS "abcdefghijklmnopqrstuvwxyz")

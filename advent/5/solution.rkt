@@ -6,6 +6,9 @@
 (require "../CoList.rkt")
 (provide main-a main-b)
 
+(define-thunk (! log x)
+  (do [_ <- (! displayln x)] (ret x)))
+
 ;; data FreeGroup A = List (Polar A) where there are no adjacent terms (+ x) (- x) or (- x) (+ x)
 ;; data Polar A = `(,Sign ,A)
 ;; data Sign = '+ or '-
@@ -41,4 +44,32 @@
                      cl-filter letter? 'o
                      read-all-chars '$)]
       (! length reduced)))
-(define-thunk (! main-b) (ret 'not-done-yet))
+
+(define-thunk (! remove-and-reduce)
+  (copat
+   [(un-reduced c)
+    (do [reduced <- (! <<n
+                       cl-foldl^ free-act '() 'o
+                       cl-filter (~ (λ (x) (! <<v not 'o equal? c 'o second x '$))) 'o
+                       colist<-list un-reduced '$)]
+        (! <<v log 'o List c 'o length reduced '$))]))
+
+;; just did a visual inspection: the smallest answer is much smaller
+;; so it's obvious
+
+;; since removing a letter is a homomorphism (just deciding to send an
+;; element and its inverse to the identity), you can reuse the reduced
+;; word from part a.
+(define-thunk (! main-b)
+  (do [reduced <- (! <<n
+                     cl-foldl^ free-act '() 'o
+                     cl-map parse-atom 'o
+                     cl-filter letter? 'o
+                     read-all-chars '$)]
+      [cs*counts
+       <-
+       (! <<n
+          list<-colist 'o
+          cl-map (~ (! remove-and-reduce reduced)) 'o
+          (~ (! <<v colist<-list 'o string->list UPPERS '$)) '$)]
+    (ret 'done)))
