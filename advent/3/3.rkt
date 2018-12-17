@@ -26,11 +26,15 @@
 (define-thunk (! s-height)
   (copat [(s) (! <<v car 'o cdr 'o cdr 'o cdr 'o cdr s '$)]))
 
+(define-thunk (! mk-coord)
+  (copat [(x y) (ret (list 'coord 'x x 'y y))]))
+
 (define-thunk (! mk-rect id x y w h)
-  (ret
-   (list 'rect 'id id
-         (list 'coord 'x x 'y y)
-         (list 'size 'width w 'height h))))
+  (do [c <- (! mk-coord x y)]
+      (ret
+       (list 'rect 'id id
+             c
+             (list 'size 'width w 'height h)))))
 
 (define r-ex
   (list 'rect 'id 0
@@ -77,9 +81,9 @@
       [pty <- (! c-y pt)]
       (! and
          (thunk (! <= rx ptx))
-         (thunk (! <<v <= ptx 'o + rx rw '$))
+         (thunk (! <<v < ptx 'o + rx rw '$))
          (thunk (! <= ry pty))
-         (thunk (! <<v <= pty 'o + ry rh '$))))]))
+         (thunk (! <<v < pty 'o + ry rh '$))))]))
 
 (define-thunk (! sh-union)
   (copat
@@ -120,6 +124,12 @@
 (define-thunk (! crush)
   (copat [(l) (! cl-foldl l comb-pair (list sh-empty sh-empty))]))
 
+(define-thunk (! all-coordinates)
+  (! cl-map (thunk (! apply mk-coord))
+     (thunk (! cartesian-product
+               (thunk (! range 0 1000))
+               (thunk (! range 0 1000))))))
+
 (define-thunk (! main3-1)
   (do [ls <- (! slurp-lines)]
       [touched*twice <-
@@ -128,8 +138,10 @@
            cl-map parse-rect 'o
            colist<-list ls '$)]
     [twice-touched <- (! second touched*twice)]
-    
-    (! twice-touched 'contains? (list 'coord 'x 5 'y 5))
+    (! <<n cl-length 'o
+       cl-filter Ret 'o
+       cl-map (thunk (copat [(pt) (! twice-touched 'contains? pt)]))
+       all-coordinates '$)
+    ; (! twice-touched 'contains? (list 'coord 'x 5 'y 5))
     ))
-; (! main3-1)
-
+(! main3-1)
