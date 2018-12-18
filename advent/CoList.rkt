@@ -5,12 +5,14 @@
          colist<-list
          cl-map bind cl-foldr cl-filter any?
          cl-foldl cl-foldl^ cl-length list<-colist cl-foreach
-         range cartesian-product)
+         range cartesian-product
+         cl-zipwith)
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
 ;;   '(nil)
 ;;   '(cons ,A ,(U(CoList A))
 
+(define clv-nil (list 'nil))
 (define-thunk (! clv-nil? v)
   (! <<v equal? 'nil 'o first v '$))
 (define-thunk (! clv-cons? v)
@@ -32,7 +34,7 @@
          (do [hd <- (! clv-hd vert)]
              [tl <- (! clv-tl vert)]
            [hd^ <- (! f hd)]
-           (ret (list 'cons hd^ (thunk (! cl-map f tl)))))])))
+           (ret (list 'cons hd^ (~ (! cl-map f tl)))))])))
 
 ;; cl-foldl : U(CoList A) -> (Acc -> A -> F Acc) -> Acc -> F Acc
 (define-rec-thunk (! cl-foldl l step acc)
@@ -49,7 +51,7 @@
 
 
 (define-thunk (! cl-length)
-  (copat [(l) (! cl-foldl l (thunk (copat [(acc x) (! + 1 acc)])) 0)]))
+  (copat [(l) (! cl-foldl l (~ (copat [(acc x) (! + 1 acc)])) 0)]))
 
 ;; foldr : U (CoList A) -> (A -> U B -> B) -> UB -> B
 (define-rec-thunk (! cl-foldr)
@@ -61,20 +63,20 @@
           [#:else
            (do [hd <- (! clv-hd v)]
                [tl <- (! clv-tl v)]
-             (! cons hd (thunk (! cl-foldr tl cons nil))))]))]))
+             (! cons hd (~ (! cl-foldr tl cons nil))))]))]))
 
 (define-rec-thunk (! cl-filter)
   (copat
    [(p? l)
     (! cl-foldr
        l
-       (thunk
+       (~
         (copat
          [(x tl)
           (cond
             [(! p? x) (! clv-cons x tl)]
             [#:else (! tl)])]))
-       (thunk (ret '(nil))))]))
+       (~ (ret '(nil))))]))
 
 (define-rec-thunk (! colist<-list xs)
   (cond
@@ -82,17 +84,17 @@
     [#:else
      (do [x <- (! car xs)]
          [xs <- (! cdr xs)]
-       (ret (list 'cons x (thunk (! colist<-list xs)))))]))
+       (ret (list 'cons x (~ (! colist<-list xs)))))]))
 
 (define-thunk (! list<-colist c)
-  (! <<v reverse 'o cl-foldl c (thunk (! swap Cons)) '() '$))
+  (! <<v reverse 'o cl-foldl c (~ (! swap Cons)) '() '$))
 
 ;; cl-foreach : (A -> F 1) -> U CoList A -> F 1
 (define-thunk (! cl-foreach)
   (copat [(f c)
           (! cl-foldl
              c
-             (thunk (copat [(acc x) (do [_ <- (! f x)] (ret acc)) ]))
+             (~ (copat [(acc x) (do [_ <- (! f x)] (ret acc)) ]))
              '())]))
 
 #;
@@ -103,14 +105,17 @@
 ;; Num -> Num -> CoList Num
 ;; [lo, hi)
 ;; if hi <= lo: empty
+(define-rec-thunk (! range-lo-hi lo hi)
+  (cond
+    [(! <= hi lo) (ret '(nil))]
+    [#:else
+     (do [lo+1 <- (! + lo 1)]
+         (ret (list 'cons lo (~ (! range-lo-hi lo+1 hi)))))]))
+(define-rec-thunk (! range-lo lo)
+  (do [lo+1 <- (! + lo 1)] (ret (list 'cons lo (~ (! range-lo lo+1))))))
 (define-rec-thunk (! range)
-  (copat
-   [(lo hi)
-    (cond
-      [(! <= hi lo) (ret '(nil))]
-      [#:else
-       (do [lo+1 <- (! + lo 1)]
-           (ret (list 'cons lo (thunk (! range lo+1 hi)))))])]))
+  (copat [(lo hi) (! range-lo-hi lo hi)]
+         [(lo)    (! range-lo lo)]))
 
 ;; cl-append : U CoList A -> U CoList A -> CoList A
 (define-rec-thunk (! cl-append)
@@ -123,11 +128,11 @@
     (! cl-foldr
      l
      ;; A -> U(CoList A') -> CoList A'
-     (thunk
+     (~
       (copat
        [(x l)
-        (! cl-append (thunk (! k x)) l)]))
-     (thunk (ret '(nil))))]))
+        (! cl-append (~ (! k x)) l)]))
+     (~ (ret '(nil))))]))
 
 ;; cartesian-product : CoList A -> CoList B -> CoList (List A B)
 (define-thunk (! cartesian-product)
@@ -135,11 +140,11 @@
    [(l1 l2)
     (! cl-bind
        l1
-       (thunk
+       (~
         (copat
          [(x)
           (! cl-map
-             (thunk
+             (~
               (copat [(y) (ret (list x y))]))
              l2)])))]))
 
@@ -152,3 +157,16 @@
 
 (define-thunk (! any?)
   (copat [(c) (! cl-foldr c or (~ (ret #f)))]))
+
+(define-rec-thunk (! cl-zipwith)
+  (copat
+   [(c1 c2)
+    (do [v1 <- (! c1)] [v2 <- (! c2)]
+      (cond
+        [(! or (~ (! clv-nil? c1))
+               (~ (! clv-nil? c2)))
+         (ret clv-nil)]
+        [#:else
+         (do [h1 <- (! clv-hd c1)] [h2 <- (! clv-hd c2)]
+           [t1 <- (! clv-tl c1)] [t2 <- (! clv-tl c2)]
+           (! clv-cons (list h1 h2) (~ (! cl-zipwith t1 t2))))]))]))

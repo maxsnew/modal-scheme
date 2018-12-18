@@ -30,7 +30,7 @@
     (cond
       [(! equal? c d) (ret n)]
       [#:else
-       (do [n ~ (! + 1 n)]
+       (do [n <- (! + 1 n)]
            (! digit<-char-loop c n ds))])))
 
 (define-thunk (! digit<-char c)

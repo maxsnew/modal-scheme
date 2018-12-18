@@ -3,7 +3,7 @@
 (require (for-syntax syntax/parse
                      (except-in racket/base quote)
                      (only-in "sbpv/main.rkt" quote)))
-(provide Y do do^ ifc define-rec-thunk define-thunk
+(provide Y do do^ ifc define-rec-thunk define-thunk def-thunk def/copat
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
@@ -23,8 +23,10 @@
 
 (define-syntax (do syn)
   (syntax-parse syn
-    [(_ [x:id <- m] e es ...)
+    [(_ [x:id (~literal <-) m] e es ...)
      #`(bind (x m) (do e es ...))]
+    [(_ [x:id (~literal =) m] e es ...)
+     #`(let ([x m]) (do e es ...))]
     [(_ m) #`m]
     [(_ m e es ...)
      #`(bind (x m) (do e es ...))]))
@@ -34,19 +36,19 @@
     [(_ c e1 e2) #`(bind (x c) (if x e1 e2))]))
 (define-syntax (cond syn)
   (syntax-parse syn
-    [(_ [#:else e]) #`e]
-    [(_ [b e1] es ...) #`(ifc b e1 (cond es ...))]
+    [(_ [#:else e ...]) #`(do e ...)]
+    [(_ [(~literal else) e ...]) #`(do e ...)]
+    [(_ [b e1 ...] es ...) #`(ifc b (do e1 ...) (cond es ...))]
     [(_) #`(error 'cond-error "all cond conditions failed: TODO")]))
 
 (define-syntax (define-rec-thunk syn)
   (syntax-parse syn
-    [(_ (! f:id x:id ...) e)
+    [(_ ((~literal !) f:id x:id ...) e)
      #`(define f
-         (thunk (let ([loop (thunk (λ (f x ...) e))])
-                  (! Y loop))))]))
+         (thunk (letrec ([f (thunk (λ (x ...) e))]) (! f))))]))
 (define-syntax (define-thunk syn)
   (syntax-parse syn
-    [(_ (! f:id x:id ...) e)
+    [(_ ((~literal !) f:id x:id ...) e)
      #`(define f (thunk (λ (x ...) e)))]))
 ;; (define-rec loop (thunk (! loop)))
 
@@ -234,6 +236,7 @@
 ;; A pattern is one of
 ;;   'end - matches only the empty stack #:bind
 ;;   'var - matches anything, binds to a variable
+;;   'rest - matches the rest of the stack
 ;;   (list 'lit ?v) - representing a literal to be matched by equal?
 ;;   (list 'upto ?v) - collect all values on the stack into a list until you see something equal? to ?v
 ;;
@@ -280,6 +283,7 @@
 
 (define-thunk (! end-pat? pat) (! equal? pat 'end))
 (define-thunk (! var-pat? pat) (! equal? pat 'var))
+(define-thunk (! rest-pat? pat) (! equal? pat 'rest))
 (define-thunk (! lit-pat? pat)
   (! and
      (thunk (! cons? pat))
@@ -299,6 +303,7 @@
      (do [pat <- (! first copat)]
          [copat <- (! rest copat)]
        (cond
+         [(! rest-pat? pat) (! dot-args match-k)]
          [(! end-pat? pat) (case-λ [(#:bind) (! match-k)] [(x) (! abort-k x)])]
          [(! var-pat? pat)
           (case-λ
@@ -451,12 +456,16 @@
      #:attr pattern #''var
      #:attr all-vars #'(x))
     (pattern
-     (= e:expr)
+     ((~literal =) e:expr)
      #:attr pattern #`(list 'lit e)
      #:attr all-vars #'())
     (pattern
-     (upto xs e)
+     ((~literal upto) xs:id e:expr)
      #:attr pattern #`(list 'upto e)
+     #:attr all-vars #'(xs))
+    (pattern
+     ((~literal rest) xs:id)
+     #:attr pattern #`'rest
      #:attr all-vars #'(xs))
     (pattern
      e:expr
@@ -478,10 +487,10 @@
 
 (define-syntax (copat syn)
   (syntax-parse syn
-    [(_ [cop:copat e] ...)
+    [(_ [cop:copat e ...] ...)
      ;; #:do ((displayln #'(cop.vars ...)))
      ;; #`(list (list cop.patterns (thunk (λ cop.vars e))) ...)
-     #`(! copattern-match-default-error (list (list cop.patterns (thunk (λ cop.vars e))) ...))
+     #`(! copattern-match-default-error (list (list cop.patterns (thunk (λ cop.vars (do e ...)))) ...))
      ]))
 
 (define-syntax (do^ syn)
@@ -528,7 +537,12 @@
       (! <<v-impl k))]
    [(f (upto xs '$))
     (do [z <- (! apply f xs)]
-        (! k z))]))
+        (! k z))]
+   [(f)
+    (! dot-args
+       (~ (λ (args)
+            (do [z <- (! apply f args)]
+                (! k z)))))]))
 
 (define-thunk (! <<v) (! <<v-impl Ret))
 
@@ -538,7 +552,9 @@
     (let ([k (thunk (copat [(y) (! k (thunk (! apply f xs y)))]))])
       (! <<n-impl k))]
    [(k f (upto xs '$))
-    (! k (thunk (! apply f xs)))]))
+    (! k (thunk (! apply f xs)))]
+   [(k f) (! dot-args
+             (~ (λ (args) (! k (thunk (! apply f args))))))]))
 (define-thunk (! <<n) (! <<n-impl $))
 
 (define-thunk (! beep) (ret "beep"))
@@ -567,6 +583,15 @@
 ;;             (ret (cons y acc)))]))
 ;;      '() '$))
 
+(define-syntax (def/copat syn)
+  (syntax-parse syn
+    [(_ ((~literal !) f:id) ms ...)
+     #`(define-rec-thunk (! f) (copat ms ...))]))
+(define-syntax (def-thunk syn)
+  (syntax-parse syn
+    [(_ ((~literal !) f:id x:id ...) es ...)
+     #`(define-rec-thunk (! f) (copat [(x ...) es ...]))]))
+
 (define-rec-thunk (! filter p xs)
   (cond
     [(! empty? xs) (ret '())]
@@ -576,3 +601,4 @@
        (ifc (! p x)
             (ret (cons x xs))
             (ret xs)))]))
+
