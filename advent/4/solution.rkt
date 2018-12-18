@@ -6,7 +6,7 @@
 (require "../Stream.rkt")
 (require "../CoList.rkt")
 (require "../table.rkt")
-(provide main-a)
+(provide main-a main-b)
 
 (define-thunk (! list-ref l n)
   (! stream-ref (thunk (! stream<-list l)) n))
@@ -162,10 +162,20 @@
   (do [_ <- (! displayln x)]
       (ret x)))
 
+(define-thunk (! best-minute naps)
+  (do [times <- (! make-vector 60)]
+      [_ <-
+         (! <<n cl-foreach (thunk (! inc-times times)) 'o colist<-list naps '$)]
+    [bst*time <- (! <<n
+                    minimum-by (thunk (λ (x) (! <<v - 'o second x '$))) greatest-sleep 'o
+                    cl-map (thunk (λ (i) (! <<v List i 'o vector-ref times i '$)))'o
+                    range 0 60 '$)]
+    (ret bst*time)))
+
 (define-thunk (! main-a)
   (do [l <- (! slurp-lines)]
       [l <- (! <<v map (thunk (! apply parse-entry)) 'o map string->list l '$)]
-    [es <- (! <<v group-entries 'o debug-id 'o sort l rec< '$)]
+    [es <- (! <<v group-entries 'o sort l rec< '$)]
     [id->naps
      <- (! <<n mk-entry-tbl 'o
            cl-map fudge 'o colist<-list es '$)]
@@ -178,13 +188,26 @@
                              )]
     [big-sleeper <- (! first big-sleeper*sleep)]
     [naps  <- (! id->naps 'get big-sleeper #f)]
-    [times <- (! make-vector 60)]
-    [_ <-
-       (! <<n cl-foreach (thunk (! inc-times times)) 'o colist<-list naps '$)]
-    [bst*time <- (! <<n
-                    minimum-by (thunk (λ (x) (! <<v - 'o second x '$))) greatest-sleep 'o
-                    cl-map (thunk (λ (i) (! <<v List i 'o vector-ref times i '$)))'o
-                    range 0 60 '$)]
-    [best <- (! first bst*time)]
-    [_ <- (! displayln (list big-sleeper best))]
-    (! * best big-sleeper)))
+    [best <- (! <<v first 'o best-minute naps '$)]
+    [chksum <- (! * best big-sleeper)]
+    (ret (list 'part 'a ': 'id big-sleeper '* 'minute best '= chksum))))
+
+(define-thunk (! main-b)
+  (do [l <- (! slurp-lines)]
+      [l <- (! <<v map (thunk (! apply parse-entry)) 'o map string->list l '$)]
+    [es <- (! <<v group-entries 'o sort l rec< '$)]
+    [id->naps
+     <- (! <<n mk-entry-tbl 'o
+           cl-map fudge 'o colist<-list es '$)]
+    [id*naps <- (! id->naps 'to-list)]
+    [id*best <- (! <<n
+                   minimum-by (thunk (λ (x) (! <<v - 'o second 'o second x '$))) (list -1 greatest-sleep) 'o 
+         cl-map (thunk (λ (x) (do [id <- (! first x)] [naps <- (! rest x)]
+                                [best <- (! best-minute naps)]
+                                (ret (list id best))))) 'o
+         colist<-list id*naps '$)]
+    [id <- (! first id*best)] [best <- (! second id*best)]
+    [chksum <- (! <<v * id 'o first best '$)]
+    (ret (list 'part 'b ': 'id id '* 'minute best '= chksum))))
+
+
