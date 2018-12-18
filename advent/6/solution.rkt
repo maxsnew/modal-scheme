@@ -38,7 +38,7 @@
 (def/copat (! parse-line)
   [(s #:bind) (! <<v apply parse-pt-stk 'o string->list s)])
 
-;; CoList (List ID Pt)
+;; FU CoList (List ID Pt)
 (def-thunk (! parse-input)
   [ls <- (! slurp-lines)]
   [parsed = (~ (! <<n cl-map parse-line 'o colist<-list ls))]
@@ -48,6 +48,7 @@
   [id*pts-c = (~ (! colist<-list id*pts))]
   (ret id*pts-c))
 
+;; INPUT-dependent
 ;; (define SMALL-X 0)
 ;; (define LARGE-X 100) ; upper bounds are exclusive
 ;; (define SMALL-Y 0)
@@ -57,6 +58,12 @@
 (define SMALL-Y 41)
 (define LARGE-Y 355) ; upper bounds are exclusive
 (def-thunk (! tie?) (! equal? 'tie))
+
+(def-thunk (! all-points)
+  (! <<n cl-map (~ (! apply mk-pt)) 'o
+     cartesian-product
+     (~ (! range SMALL-X LARGE-X))
+     (~ (! range SMALL-Y LARGE-Y))))
 
 ;; -> ('all-cells U 'perimiter-cells) -> (Tie U (List ID Nat))
 (def-thunk (! mk-region sites)
@@ -140,5 +147,18 @@
   [id->size <- (! remove-infinities region id->size)]
   (! id->size 'to-list))
 
+(def-thunk (! num<-bool b) (if b (ret 1) (ret 0)))
+
+;; U(CoList (List ID Point)) -> Point -> F Bool
+(def-thunk (! close-enough? sites pt)
+  [total-dist
+   <- (! <<n cl-foldl^ + 0 'o
+         cl-map (~ (! manhattan pt)) 'o
+         cl-map second sites)]
+  (! < total-dist 10000)) ; INPUT-dependent
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  [sites <- (! parse-input)]
+  (! <<n
+   cl-foldl^ + 0 'o
+   cl-map num<-bool 'o
+   cl-map (~ (! close-enough? sites)) all-points))
