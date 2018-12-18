@@ -8,7 +8,7 @@
          list first second third fourth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
          copat length Ret <<v <<n cond
-         and or foldl map filter ~)
+         and or foldl map filter ~ debug)
 
 (define-syntax (~ syn)
   (syntax-parse syn [(_ e) #'(thunk e)]))
@@ -589,8 +589,8 @@
      #`(define-rec-thunk (! f) (copat ms ...))]))
 (define-syntax (def-thunk syn)
   (syntax-parse syn
-    [(_ ((~literal !) f:id x:id ...) es ...)
-     #`(define-rec-thunk (! f) (copat [(x ...) es ...]))]))
+    [(_ ((~literal !) f:id pat ...) es ...)
+     #`(define-rec-thunk (! f) (copat [(pat ...) es ...]))]))
 
 (define-rec-thunk (! filter p xs)
   (cond
@@ -602,3 +602,4 @@
             (ret (cons x xs))
             (ret xs)))]))
 
+(def-thunk (! debug x) (! displayln x) (ret x))

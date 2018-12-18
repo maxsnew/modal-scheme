@@ -85,6 +85,7 @@
 (require-fo-wrapped-provide racket/base hash-set)
 (require-fo-wrapped-provide racket/base append)
 (require-fo-wrapped-provide racket/base hash-ref)
+(require-fo-wrapped-provide racket/base hash-remove)
 (require-fo-wrapped-provide racket/base hash-has-key?)
 (require-fo-wrapped-provide racket/base hash-count)
 (require-fo-wrapped-provide racket/base hash->list)

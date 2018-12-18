@@ -1,10 +1,12 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-(provide clv-nil? clv-cons? clv-hd clv-tl
+(provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons
+         cl-single
          colist<-list
-         cl-map bind cl-foldr cl-filter any?
-         cl-foldl cl-foldl^ cl-length list<-colist cl-foreach
+         cl-map cl-bind cl-bind^ cl-foldr cl-filter any?
+         cl-append cl-append*
+         cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
          range cartesian-product
          cl-zipwith)
 ;; CoList A = F (CoListVert A)
@@ -13,6 +15,7 @@
 ;;   '(cons ,A ,(U(CoList A))
 
 (define clv-nil (list 'nil))
+(def-thunk (! cl-nil) (ret clv-nil))
 (define-thunk (! clv-nil? v)
   (! <<v equal? 'nil 'o first v '$))
 (define-thunk (! clv-cons? v)
@@ -46,8 +49,13 @@
              [tl <- (! clv-tl vert)]
            [acc <- (! step acc hd)]
            (! cl-foldl tl step acc))])))
+
 (define-thunk (! cl-foldl^ )
   (copat [(step acc l) (! cl-foldl l step acc)]))
+
+(def-thunk (! cl-foldl1 step l)
+  [v <- (! l)]  [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+  (! cl-foldl tl step hd))
 
 
 (define-thunk (! cl-length)
@@ -109,10 +117,10 @@
   (cond
     [(! <= hi lo) (ret '(nil))]
     [#:else
-     (do [lo+1 <- (! + lo 1)]
-         (ret (list 'cons lo (~ (! range-lo-hi lo+1 hi)))))]))
+     [lo+1 <- (! + lo 1)]
+     (! clv-cons lo (~ (! range-lo-hi lo+1 hi)))]))
 (define-rec-thunk (! range-lo lo)
-  (do [lo+1 <- (! + lo 1)] (ret (list 'cons lo (~ (! range-lo lo+1))))))
+  (do [lo+1 <- (! + lo 1)] (! clv-cons lo (~ (! range-lo lo+1)))))
 (define-rec-thunk (! range)
   (copat [(lo hi) (! range-lo-hi lo hi)]
          [(lo)    (! range-lo lo)]))
@@ -121,18 +129,22 @@
 (define-rec-thunk (! cl-append)
   (copat [(l1 l2) (! cl-foldr l1 clv-cons l2)]))
 
+(define-thunk (! cl-single x) (! clv-cons x cl-nil))
+
+(def/copat (! cl-append*)
+  [(#:bind) (ret clv-nil)]
+  [(l) (! <<n cl-append l 'o cl-append*)])
+
 ;; cl-bind : CoList A -> (A -> CoList A') -> CoList A'
-(define-thunk (! cl-bind)
-  (copat
-   [(l k)
-    (! cl-foldr
+(def-thunk (! cl-bind l k)
+  (! cl-foldr
      l
      ;; A -> U(CoList A') -> CoList A'
-     (~
-      (copat
-       [(x l)
-        (! cl-append (~ (! k x)) l)]))
-     (~ (ret '(nil))))]))
+     (~ (copat [(x l) (! cl-append (~ (! k x)) l)]))
+     cl-nil))
+
+(def-thunk (! cl-bind^) (! swap cl-bind))
+
 
 ;; cartesian-product : CoList A -> CoList B -> CoList (List A B)
 (define-thunk (! cartesian-product)
@@ -158,15 +170,16 @@
 (define-thunk (! any?)
   (copat [(c) (! cl-foldr c or (~ (ret #f)))]))
 
-(define-rec-thunk (! cl-zipwith)
-  (copat
-   [(c1 c2)
-    (do [v1 <- (! c1)] [v2 <- (! c2)]
-      (cond
-        [(! or (~ (! clv-nil? c1))
-               (~ (! clv-nil? c2)))
-         (ret clv-nil)]
-        [#:else
-         (do [h1 <- (! clv-hd c1)] [h2 <- (! clv-hd c2)]
-           [t1 <- (! clv-tl c1)] [t2 <- (! clv-tl c2)]
-           (! clv-cons (list h1 h2) (~ (! cl-zipwith t1 t2))))]))]))
+(def-thunk (! cl-zipwith c1 c2)
+  [v1 <- (! c1)] [v2 <- (! c2)]
+  (cond
+    [(! or (~ (! clv-nil? v1))
+           (~ (! clv-nil? v2)))
+     (ret clv-nil)]
+    [else
+     [h1 <- (! clv-hd v1)] [h2 <- (! clv-hd v2)]
+     [t1 <- (! clv-tl v1)] [t2 <- (! clv-tl v2)]
+     (! clv-cons (list h1 h2) (~ (! cl-zipwith t1 t2)))]))
+
+(def-thunk (! ex) (! range 0 10))
+(def-thunk (! z-ex) (! cl-zipwith ex ex))

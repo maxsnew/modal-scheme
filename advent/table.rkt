@@ -7,6 +7,7 @@
 ;;   has-key? |- K -> F bool
 ;;   set      |- K -> V -> FU (Table K V)
 ;;   get      |- K -> V -> F V
+;;   remove   |- K -> FU (Table K V)
 ;;   to-list  |- F (Listof (Cons K V))
 
 (define-rec-thunk (! table<-hash h)
@@ -19,6 +20,8 @@
     (ifc (! hash-has-key? h k)
          (! hash-ref h k)
          (ret v))]
+   [((= 'remove) k #:bind)
+    [h <- (! hash-remove h k)] (ret (~ (! table<-hash h)))]
    [((= 'to-list) #:bind) (! hash->list h)]))
 (define-thunk (! table<-hash~ h) (ret (thunk (! table<-hash h))))
 
@@ -34,4 +37,6 @@
                          (! table<-hash h))))
 #;
 (do [t <- (! <<v table<-hash~ 'o hash 'x 5 'y 16 '$)]
-    (! update t 'z 0 +))
+    (! <<v
+       (~ (λ (t) (! t 'to-list))) 'o
+       t 'remove 'x))
