@@ -78,6 +78,8 @@
 (require-fo-wrapped-provide racket/base list->string)
 (require-fo-wrapped-provide racket/base char-upcase)
 (require-fo-wrapped-provide racket/base char-downcase)
+(require-fo-wrapped-provide racket/base char->integer)
+(require-fo-wrapped-provide racket/base integer->char)
 (require-fo-wrapped-provide racket/base string?)
 (require-fo-wrapped-provide racket/base char?)
 (require-fo-wrapped-provide racket/base eof-object?)

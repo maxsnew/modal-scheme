@@ -9,6 +9,11 @@
 
 (provide main-a main-b)
 
+;; (define NUM-THREADS 2) ;; small 
+;; (define JOB-DELAY 0)   ;; small
+(define NUM-THREADS 5) ;; large
+(define JOB-DELAY 60)  ;; large
+
 ;; Steps: parse the input into a graph
 ;; Do Kahn's algorithm, breaking ties by alphabetical order
 
@@ -66,19 +71,34 @@
 ;; String -> U CoList String -> CoList String
 ;; and
 ;; (A -> A -> F Bool) -> String -> U CoList String -> CoList String
-(def/copat (! insert~)
-  [(s c #:bind) (! insert~ string<=? s c)]
-  [(<=? x c #:bind)
-   [v <- (! c)]
-   (cond [(! clv-nil? v) (! cl-single x)]
-         [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
-               (cond [(! <=? x hd) (! cl-cons x c)]
-                     [else (! cl-cons hd (~ (! insert~ x tl)))])])]
-  )
+(def-thunk (! insert~ <=? x c #:bind)
+  [v <- (! c)]
+  (cond [(! clv-nil? v) (! cl-single x)]
+        [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+              (cond [(! <=? x hd) (! cl-cons x c)]
+                    [else (! cl-cons hd (~ (! insert~ <=? x tl)))])]))
 
 (def-thunk (! successors gr v)
   (! <<v second 'o gr 'get v #f))
 
+;; Removes the out-edges of a vertex from a graph, putting any that
+;; have no other predecessors in the provided sorted colist output
+;; Vertex -> Graph -> USortedCoList Vertex -> F (List Graph (USorted CoList Vertex)
+(def-thunk (! remove-outedges cur gr sink <=?)
+  [cur-succs <- (! <<v @> 'to-list 'o successors gr cur)]
+  ;; (List Graph (SortedList V)) -> Vertex -> F (List Graph (SortedList V))
+  [remove-backedge
+   = (~ (copat
+         [(gr*sink succ)
+          [gr <- (! first gr*sink)] [sink <- (! second gr*sink)]
+          [ps*ss <- (! gr 'get succ #f)]
+          [succ-ps <- (! first ps*ss)] [succ-ss <- (! second ps*ss)]
+          [succ-ps <- (! succ-ps 'remove cur)]
+          [gr <- (! gr 'set succ (list succ-ps succ-ss))]
+          [sink <- (cond [(! succ-ps 'empty?) (ret (~ (! insert~ <=? succ sink)))]
+                         [else (ret sink)])]
+          (! List gr sink)]))]
+  (! foldl cur-succs remove-backedge (list gr sink)))
 
 ;; Graph Vertex ->
 ;; Sorted-CoList Vertex ->
@@ -89,32 +109,18 @@
     [(! clv-nil? v-nexts) (! cl-nil)]
     [else
      [cur <- (! clv-hd v-nexts)] [nexts <- (! clv-tl v-nexts)]
-     [cur-succs <- (! <<v @> 'to-list 'o successors gr cur)]
-     ;; (List Graph (SortedList V)) -> Vertex -> F (List Graph (SortedList V))
-     [remove-backedge
-      = (~ (copat
-            [(gr*nr succ)
-             [gr <- (! first gr*nr)] [nr <- (! second gr*nr)]
-             [ps*ss <- (! gr 'get succ #f)]
-             [succ-ps <- (! first ps*ss)] [succ-ss <- (! second ps*ss)]
-             [succ-ps <- (! succ-ps 'remove cur)]
-             [gr <- (! gr 'set succ (list succ-ps succ-ss))]
-             [nr <- (cond [(! succ-ps 'empty?) (ret (~ (! insert~ succ nr)))]
-                          [else (ret nr)])]
-             (! List gr nr)]))]
-     [gr*nexts <- (! foldl cur-succs remove-backedge (list gr nexts))]
-     [gr <- (! first gr*nexts)]
-     [nexts <- (! second gr*nexts)]
+     [gr*nexts <- (! remove-outedges cur gr nexts string<=?)]
+     [gr <- (! first gr*nexts)] [nexts <- (! second gr*nexts)]
      (! cl-cons cur (~ (! topo-sort-algo nexts gr)))]))
 
-(def-thunk (! insertion-sort)
-  (! cl-foldr^ insert~ cl-nil))
+(def-thunk (! insertion-sort <=?)
+  (! cl-foldr^ (~ (! insert~ <=?)) cl-nil))
 
 ;; Graph Vertex -> CoList Vertex
 (def-thunk (! topo-sort gr)
   [adjs <- (! gr 'to-list)]
   [no-preds = (~ (! <<n
-                    insertion-sort 'o
+                    (~ (! insertion-sort string<=?)) 'o
                     cl-map first 'o
                     cl-filter (~ (! <<v @> 'empty? 'o second)) 'o
                     colist<-list adjs))]
@@ -185,15 +191,49 @@
                [jobs-v <- (! insert~ finishes-earlier? j (~ (! cl-cons cur-job rest)))]
                [cur-job <- (! clv-hd jobs-v)] [rest <- (! clv-tl jobs-v)]
                [cur-running <- (! + cur-running 1)]
-               (! ne-pool cur-running cur-job rest)])))])
+               (ret (~ (! ne-pool cur-running cur-job rest)))])))])
     (! empty-pool)))
+
+;; TODO: calculate this
+(def-thunk (! job-length)
+  (! <<v + JOB-DELAY 'o swap - 64 'o char->integer 'o first 'o string->list))
+
+;; Time -> Graph -> U(CoList V) -> U(ThreadPool) -> CoList Event
+(def-thunk (! operate time gr nexts threads)
+  [nexts-v <- (! nexts)]
+  (cond
+    ;; End the trace with a TIMESTAMP event if the threads are
+    ;; inactive and there's no jobs left
+    [(! and (~ (! clv-nil? nexts-v)) (~ (! threads 'empty?)))
+     (! cl-cons (list 'THE-END: time) cl-nil)]
+    ;; We wait for the next job to finish if the threadpool is full
+    ;; or there are no jobs left
+    [(! or (~ (! clv-nil? nexts-v)) (~ (! threads 'full?)))
+     [job*threads <- (! threads 'wait)]
+     [job <- (! first job*threads)] [threads <- (! second job*threads)]
+     [name <- (! first job)] [time <- (! second job)]
+     [gr*nexts <- (! remove-outedges name gr (~ (ret nexts-v)) string<=?)]
+     [gr <- (! first gr*nexts)] [nexts <- (! second gr*nexts)]
+     (! cl-cons
+        (list 'FINISHED-JOB name time)
+        (~ (! operate time gr nexts threads)))]
+    ;; Otherwise we add another job to the pool
+    [else
+     [job-name <- (! clv-hd nexts-v)] [nexts <- (! clv-tl nexts-v)]
+     [start-time = time] [finish-time <- (! <<v + start-time 'o job-length job-name)]
+     [threads <- (! threads 'add-job (list job-name finish-time))]
+     (! cl-cons
+        (list 'STARTING-JOB job-name start-time 'ETC: finish-time)
+        (~ (! operate time gr nexts threads)))]))
 
 (def-thunk (! main-b)
   [gr <- (! read-graph)]
   [adjs <- (! gr 'to-list)]
   [no-preds = (~ (! <<n
-                    insertion-sort 'o
+                    (~ (! insertion-sort string<=?)) 'o
                     cl-map first 'o
                     cl-filter (~ (! <<v @> 'empty? 'o second)) 'o
                     colist<-list adjs))]
-  (ret 'not-done-yet))
+  (! <<n
+     cl-foreach displayln 'o
+     operate 0 gr no-preds (~ (! mk-pool NUM-THREADS))))
