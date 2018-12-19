@@ -120,5 +120,35 @@
   [chars <- (! <<n list<-colist 'o cl-bind^ colist<-list 'o cl-map string->list 'o topo-sort gr)]
   (! list->string chars))
 
+;; For part 2 we start out the same: build the graph and find
+;; initialize with the sorted list of vertices with no predecessors
+;;
+;; Now our state is 4 things: the graph g, the vertices that are ready
+;; next, the state of our threads st-threads, and the elapsed time
+;;
+;; We are producing a CoList of Events, i.e., a trace of execution
+;; An Event is one of
+;;   START-JOB ,Vertex ,Timestamp
+;;   FINISH-JOB ,Vertex ,Timestamp
+;;
+;; The state transitions as follows:
+;;   - The trace ends if the threads are inactive and next is empty
+
+;;   - We START-JOB v t with the current time t if there is thread
+;;     capacity and the next list is (v :: next). We also assign the
+;;     job to a thread with finish time = current-time + job-length v
+;;
+;;   - WE FINISH-JOB v t if threads are at full capacity: we find the
+;;     job that finishes soonest, and advance time to then and remove
+;;     it from the active jobs
+
+
 (def-thunk (! main-b)
+  [gr <- (! read-graph)]
+  [adjs <- (! gr 'to-list)]
+  [no-preds = (~ (! <<n
+                    insertion-sort 'o
+                    cl-map first 'o
+                    cl-filter (~ (! <<v @> 'empty? 'o second)) 'o
+                    colist<-list adjs))]
   (ret 'not-done-yet))
