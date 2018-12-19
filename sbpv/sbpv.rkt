@@ -69,6 +69,7 @@
 (require-fo-wrapped-provide racket/base cdr)
 (require-fo-wrapped-provide racket/base equal?)
 (require-fo-wrapped-provide racket/base symbol?)
+(require-fo-wrapped-provide racket/base string<=?)
 (require-fo-wrapped-provide racket/base string-append)
 (require-fo-wrapped-provide racket/base read-line)
 (require-fo-wrapped-provide racket/base read-char)

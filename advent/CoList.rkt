@@ -4,7 +4,7 @@
 (provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons cl-cons
          cl-single
          colist<-list
-         cl-map cl-bind cl-bind^ cl-foldr cl-filter any?
+         cl-map cl-bind cl-bind^ cl-foldr cl-foldr^ cl-filter any?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
          range cartesian-product
@@ -74,6 +74,7 @@
            (do [hd <- (! clv-hd v)]
                [tl <- (! clv-tl v)]
              (! cons hd (~ (! cl-foldr tl cons nil))))]))]))
+(def-thunk (! cl-foldr^ cons nil l) (! cl-foldr l cons nil))
 
 (define-rec-thunk (! cl-filter)
   (copat

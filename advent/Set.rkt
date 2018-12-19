@@ -9,7 +9,7 @@
 ;;   'member? |- A -> F bool
 ;;   'add     |- A -> FU (Set A)
 ;;   'remove  |- A -> FU (Set A)
-
+;;   'to-list |- F (Listof A)
 (def-thunk (! set<-hash h)
   (copat
    [((= 'empty?) #:bind) (! hash-empty? h)]
@@ -21,6 +21,7 @@
    [((= 'remove) x #:bind)
     [h <- (! hash-remove h x)]
     (ret (~ (! set<-hash h)))]
+   [((= 'to-list) #:bind) (! <<v map first 'o hash->list h)]
    [((= 'debug) #:bind) (! <<v displayln 'o hash-count h)]))
 
 ;; Set A
