@@ -76,17 +76,14 @@
 
 
 ;; Graph Vertex ->
-;; Sorted-List Vertex ->
 ;; Sorted-CoList Vertex ->
 ;; CoList Vertex
-(def-thunk (! topo-sort-algo cur-round next-round gr)
+(def-thunk (! topo-sort-algo nexts gr)
+  [v-nexts <- (! nexts)]
   (cond
-    [(! empty? cur-round)
-     [cur-round <- (! list<-colist next-round)]
-     (cond [(! empty? cur-round) (! cl-nil)]
-           [else (! topo-sort-algo cur-round cl-nil gr)])]
+    [(! clv-nil? v-nexts) (! cl-nil)]
     [else
-     [cur <- (! first cur-round)] [cur-round <- (! rest cur-round)]
+     [cur <- (! clv-hd v-nexts)] [nexts <- (! clv-tl v-nexts)]
      [cur-succs <- (! <<v @> 'to-list 'o successors gr cur)]
      ;; (List Graph (SortedList V)) -> Vertex -> F (List Graph (SortedList V))
      [remove-backedge
@@ -100,10 +97,10 @@
              [nr <- (cond [(! succ-ps 'empty?) (ret (~ (! insert~ succ nr)))]
                           [else (ret nr)])]
              (! List gr nr)]))]
-     [gr*next-round <- (! foldl cur-succs remove-backedge (list gr next-round))]
-     [gr <- (! first gr*next-round)]
-     [next-round <- (! second gr*next-round)]
-     (! cl-cons cur (~ (! topo-sort-algo cur-round next-round gr)))]))
+     [gr*nexts <- (! foldl cur-succs remove-backedge (list gr nexts))]
+     [gr <- (! first gr*nexts)]
+     [nexts <- (! second gr*nexts)]
+     (! cl-cons cur (~ (! topo-sort-algo nexts gr)))]))
 
 (def-thunk (! insertion-sort)
   (! cl-foldr^ insert~ cl-nil))
@@ -111,13 +108,12 @@
 ;; Graph Vertex -> CoList Vertex
 (def-thunk (! topo-sort gr)
   [adjs <- (! gr 'to-list)]
-  [no-preds <- (! <<n
-                  list<-colist 'o
-                  insertion-sort 'o
-                  cl-map first 'o
-                  cl-filter (~ (! <<v @> 'empty? 'o second)) 'o
-                  colist<-list adjs)]
-  (! topo-sort-algo no-preds cl-nil gr))
+  [no-preds = (~ (! <<n
+                    insertion-sort 'o
+                    cl-map first 'o
+                    cl-filter (~ (! <<v @> 'empty? 'o second)) 'o
+                    colist<-list adjs))]
+  (! topo-sort-algo no-preds gr))
 
 (def-thunk (! main-a)
   [gr <- (! read-graph)]
