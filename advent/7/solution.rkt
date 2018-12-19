@@ -64,12 +64,17 @@
 
 ;; using string<=?
 ;; String -> U CoList String -> CoList String
-(def-thunk (! insert~ x c)
-  [v <- (! c)]
-  (cond [(! clv-nil? v) (! cl-single x)]
-        [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
-              (cond [(! string<=? x hd) (! cl-cons x c)]
-                    [else (! cl-cons hd (~ (! insert~ x tl)))])]))
+;; and
+;; (A -> A -> F Bool) -> String -> U CoList String -> CoList String
+(def/copat (! insert~)
+  [(s c #:bind) (! insert~ string<=? s c)]
+  [(<=? x c #:bind)
+   [v <- (! c)]
+   (cond [(! clv-nil? v) (! cl-single x)]
+         [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+               (cond [(! <=? x hd) (! cl-cons x c)]
+                     [else (! cl-cons hd (~ (! insert~ x tl)))])])]
+  )
 
 (def-thunk (! successors gr v)
   (! <<v second 'o gr 'get v #f))
@@ -142,6 +147,46 @@
 ;;     job that finishes soonest, and advance time to then and remove
 ;;     it from the active jobs
 
+;; data Job = List Vertex Timestamp
+;; codata ThreadPool where
+;;   'empty?        |- F Bool
+;;   'full?         |- F Bool
+;;   'add-job       |- Job -> FU ThreadPool -- precondition 'full? is #f, and afterwards empty? is #f
+;;   'wait          |- F (List Job (U ThreadPool)) -- precondition 'empty? is #f and postcondition full? is #f
+
+(def-thunk (! finishes-earlier? j1 j2)
+  [t1 <- (! second j1)] [t2 <- (! second j2)]
+  (! <= t1 t2))
+
+;; Nat+ -> ThreadPool
+(def-thunk (! mk-pool limit)
+  (letrec
+      ([empty-pool
+        (~ (copat
+            [((= 'empty?)) (ret #t)]
+            [((= 'full?)) (ret #f)]
+            [((= 'add-job) job) (ret (~ (! ne-pool 1 job cl-nil)))]))]
+       [ne-pool
+        (~ (λ (cur-running cur-job rest)
+             (copat
+              [((= 'empty?) #:bind) (ret #f)]
+              [((= 'full?) #:bind) (! equal? limit cur-running)]
+              [((= 'wait) #:bind)
+               [pool--
+                <- (cond
+                     [(! equal? 1 cur-running) (ret (~ (! empty-pool)))]
+                     [else
+                      [rest-v <- (! rest)]
+                      [next-job <- (! clv-hd rest-v)] [rest <- (! clv-tl rest-v)]
+                      [cur-running <- (! - cur-running 1)]
+                      (ret (~ (! ne-pool cur-running next-job rest)))])]
+               (! List cur-job pool--)]
+              [((= 'add-job) j)
+               [jobs-v <- (! insert~ finishes-earlier? j (~ (! cl-cons cur-job rest)))]
+               [cur-job <- (! clv-hd jobs-v)] [rest <- (! clv-tl jobs-v)]
+               [cur-running <- (! + cur-running 1)]
+               (! ne-pool cur-running cur-job rest)])))])
+    (! empty-pool)))
 
 (def-thunk (! main-b)
   [gr <- (! read-graph)]

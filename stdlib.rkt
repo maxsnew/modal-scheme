@@ -468,12 +468,7 @@
     (pattern
      ((~literal rest) xs:id)
      #:attr pattern #`'rest
-     #:attr all-vars #'(xs))
-    (pattern
-     e:expr
-     #:attr pattern #`(list 'lit e)
-     #:attr all-vars #'())
-    )
+     #:attr all-vars #'(xs)))
   (define-syntax-class copat
     #:attributes (patterns vars)
     (pattern
