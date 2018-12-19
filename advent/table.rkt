@@ -1,7 +1,7 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-(provide update empty-table table<-hash)
+(provide update update^ empty-table table<-hash)
 
 ;; codata Table K V where
 ;;   has-key? |- K -> F bool
@@ -31,6 +31,8 @@
            [new-v <- (! updater v)]
          (! tbl 'set k new-v))
        (! tbl 'set k v)))
+(def-thunk (! update^ k v up tbl) (! update tbl k v up))
+
 
 (define empty-table (thunk
                      (do [h <- (! hash)]

@@ -2,19 +2,29 @@
 
 (require "../stdlib.rkt")
 
+(provide set<-hash empty-set set-single)
+
 ;; codata Set A where
+;;   'empty? |- F bool
 ;;   'member? |- A -> F bool
 ;;   'add     |- A -> FU (Set A)
 ;;   'remove  |- A -> FU (Set A)
 
 (def-thunk (! set<-hash h)
   (copat
+   [((= 'empty?) #:bind) (! hash-empty? h)]
    [((= 'member?) x #:bind)
     (! hash-has-key? h x)]
    [((= 'add) x #:bind)
     [h <- (! hash-set h x #t)]
-    (ret (thunk (! set<-hash h)))]
+    (ret (~ (! set<-hash h)))]
    [((= 'remove) x #:bind)
     [h <- (! hash-remove h x)]
-    (ret (thunk (! set<-hash h)))]
-   [((= 'debug) #:bind) (! .v displayln hash-count h)]))
+    (ret (~ (! set<-hash h)))]
+   [((= 'debug) #:bind) (! <<v displayln 'o hash-count h)]))
+
+;; Set A
+(def-thunk (! empty-set) [e <- (! hash)] (! set<-hash e))
+;; set-single : A -> FU Set A
+(def-thunk (! set-single x) [h <- (! hash x #t)]
+   (ret (~ (! set<-hash h))))

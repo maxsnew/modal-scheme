@@ -1,7 +1,8 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-(provide slurp-lines read-all-chars)
+(require "CoList.rkt")
+(provide slurp-lines! slurp-lines~ read-all-chars)
 
 ;; CoList Char
 ;; lazily read in stdin as a CoList
@@ -11,11 +12,12 @@
         [(! eof-object? c) (ret '(nil))]
         [#:else (ret (list 'cons c (thunk (! read-all-chars))))])))
 
-(define-rec-thunk (! slurp-lines)
-  (copat
-   [(#:bind) (! slurp-lines '())]
-   [(so-far)
-    (do [l <- (! read-line)]
-        (cond
-          [(! eof-object? l) (ret so-far)]
-          [#:else (! slurp-lines (cons l so-far))]))]))
+;; CoList String
+(def-thunk (! slurp-lines~)
+  (do [l <- (! read-line)]
+      (cond [(! eof-object? l) (! cl-nil)]
+            [else (! cl-cons l (~ (! slurp-lines~)))])))
+
+;; F List String
+(def-thunk (! slurp-lines!)
+  (! list<-colist slurp-lines~))

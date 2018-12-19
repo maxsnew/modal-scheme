@@ -1,7 +1,7 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-(provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons
+(provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons cl-cons
          cl-single
          colist<-list
          cl-map cl-bind cl-bind^ cl-foldr cl-filter any?
@@ -26,6 +26,8 @@
 ;; clv-cons : A -> U CoList A -> CoList A
 (define-thunk (! clv-cons)
   (copat [(hd tl) (ret (list 'cons hd tl))]))
+(define cl-cons clv-cons)
+
 
 ;; CBN function:
 ;; U(A -> F B) -> U(CoList A) -> CoList A

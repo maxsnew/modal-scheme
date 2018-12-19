@@ -7,8 +7,10 @@
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
-         copat length Ret <<v <<n cond
-         and or foldl map filter ~ debug)
+         copat length Ret cond
+         and or foldl map filter ~ debug
+         ;; "Calling conventions: call-by-value, call-by-name, and method style"
+         <<v <<n oo)
 
 (define-syntax (~ syn)
   (syntax-parse syn [(_ e) #'(thunk e)]))
@@ -603,3 +605,7 @@
             (ret xs)))]))
 
 (def-thunk (! debug x) (! displayln x) (ret x))
+
+(def/copat (! oo)
+  [(f (upto xs '@)) [g <- (! f xs)] (! oo g)]
+  [(f) (! f)])
