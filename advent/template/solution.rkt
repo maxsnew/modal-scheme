@@ -7,8 +7,8 @@
 
 (provide main-a main-b)
 
-(define-thunk (! main-a)
+(def-thunk (! main-a)
   (ret 'not-done-yet))
 
-(define-thunk (! main-b)
+(def-thunk (! main-b)
   (ret 'not-done-yet))
