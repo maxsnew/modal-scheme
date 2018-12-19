@@ -47,6 +47,7 @@
        [acc <- (! <<v + n 'o * 10 acc '$)]
        [(! parse-num-loop acc ds)])]))
 
-;; Parses a list of characters into a number
+;; Parses a list of characters into a natural number
+;; Listof Char -> F Nat
 (define-thunk (! parse-num ds)
   (! parse-num-loop 0 ds))

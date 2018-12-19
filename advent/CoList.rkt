@@ -7,7 +7,7 @@
          cl-map cl-bind cl-bind^ cl-foldr cl-foldr^ cl-filter any?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
-         range cartesian-product
+         range cartesian-product sep-by
          cl-zipwith)
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
@@ -186,3 +186,21 @@
 
 (def-thunk (! ex) (! range 0 10))
 (def-thunk (! z-ex) (! cl-zipwith ex ex))
+
+; A -> U(CoList A) -> CoList (Listof A)
+(def-thunk (! sep-by sep c)
+  (letrec
+      ([loop
+        (~ (copat [(acc c)
+                   [v <- (! c)]
+                   (cond [(! and (~ (! clv-nil? v)) (~ (! empty? acc)))
+                          (! cl-nil)]
+                         [(! clv-nil? v)
+                          (! <<v swap cl-cons cl-nil 'o reverse acc)]
+                         [else
+                          [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+                          (cond
+                            [(! equal? hd sep)
+                             (! <<v swap cl-cons (~ (! loop '() tl)) 'o reverse acc)]
+                            [else (! loop (cons hd acc) tl)])])]))])
+    (! loop '() c)))

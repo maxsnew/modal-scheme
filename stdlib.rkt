@@ -10,7 +10,7 @@
          copat length Ret cond
          and or foldl map filter ~ debug @>
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
-         <<v <<n oo)
+         <<v <<n oo idiom idiom^)
 
 (define-syntax (~ syn)
   (syntax-parse syn [(_ e) #'(thunk e)]))
