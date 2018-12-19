@@ -1,6 +1,7 @@
 #lang sbpv
 
 (require "../../stdlib.rkt")
+(require "../Set.rkt")
 (require "../Stream.rkt")
 (require "../Parse.rkt")
 
@@ -36,19 +37,6 @@
           [#:else
            (do [n <- (! parse x)]
                (! read-nums (cons n acc)))]))]))
-
-;; codata Set A where
-;;   'member? |- A -> F bool
-;;   'add     |- A -> FU (Set A)
-
-(define-rec-thunk (! set<-hash h)
-  (copat
-   [((= 'member?) x #:bind)
-    (! hash-has-key? h x)]
-   [((= 'add) x #:bind)
-    (do [h <- (! hash-set h x #t)]
-        (ret (thunk (! set<-hash h))))]
-   [((= 'debug) #:bind) (! .v displayln hash-count h)]))
 
 (define-rec-thunk (! search nums running seen)
   (do ;[_ <- (! seen 'debug)]
