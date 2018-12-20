@@ -100,7 +100,6 @@
                 [rights <- (! <<v reverse 'o Cons y 'o reverse rights)]
                 (! mk-deep lefts middles rights)])]))
 
-
 (do [e1 <- (! mk-elt 'x)]
     [e2 <- (! mk-elt 'y)]
   [e3 <- (! mk-elt 'z)]
@@ -118,3 +117,45 @@
      swap ft-snoc e2 'o
      ft-cons e3 'o
      Ret empty))
+
+;; concatenation
+;; multi-cons : Listof A -> FingerTree A -> F (FingerTree A)
+(def-thunk (! multi-cons xs t) (! foldr xs ft-cons t))
+;; multi-snoc : FingerTree A -> Listof A -> F (FingerTree A)
+(def-thunk (! multi-snoc t xs) (! foldl xs ft-snoc t))
+
+;; warning: this is the bad order, but we've got very short lists here
+(def/copat (! append)
+  [(xs ys) [xys <- (! foldr xs Cons ys)] (! append xs)]
+  [(xs) (ret xs)]
+  [() (ret '())])
+
+;; A -> A -> ... -> Listof (Node A)
+(def/copat (! mk-nodes)
+  [(a b #:bind) (! mk-node a b)]
+  [(a b c #:bind) (! mk-node a b c)]
+  [(a b c d #:bind)
+   [n1 <- (! mk-node a b)] [n2 <- (! mk-node c d)]
+   (! List n1 n2)]
+  [(a b c (rest ds))
+   [n <- (! mk-node a b c)]
+   [ns <- (! apply mk-nodes ds)]
+   (! Cons n ns)])
+;; app3 : FingerTree A -> Listof A -> FingerTree A -> FingerTree A
+(def-thunk (! app3 fl xs fr)
+  (cond [(! ft-mt? fl) (! multi-cons xs fr)]
+        [(! ft-mt? fr) (! multi-snoc fl xs)]
+        [(! ft-single? fl)
+         [xl <- (! ft-single-val fl)]
+         (! <<v ft-cons xl 'o multi-cons xs fr)]
+        [(! ft-single? fr)
+         [xr <- (! ft-single-val fr)]
+         (! <<v swap ft-snoc xr 'o swap multi-snoc xs fl)]
+        [else
+         [ll <- (! deep-lefts fl)] [ml <- (! deep-middles fl)] [rl <- (! deep-rights fl)]
+         [lr <- (! deep-lefts fr)] [mr <- (! deep-middles fr)] [rr <- (! deep-rights fr)]
+         [nodes <- (! <<v apply mk-nodes 'o append rl xs lr)]
+         [mm <- (! app3 ml nodes mr)]
+         (! mk-deep ll mm rr)])
+  )
+(def-thunk (! app3^ t1 t2 xs) (! app3 t1 xs t2))
