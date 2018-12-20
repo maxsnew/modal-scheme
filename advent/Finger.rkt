@@ -1,6 +1,9 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
+(require "CoList.rkt")
+
+(provide mt-flexvec flexvec<-list)
 
 ;; data Elt A where
 ;;   (Elt A)
@@ -46,6 +49,10 @@
 (define empty 'empty)
 (def-thunk (! mk-single x) [v <- (! size x)] (ret (list 'single x)))
 (def-thunk (! mk-deep lefts middles rights)
+  ;; (! displayln 'mk-deep)
+  ;; (! displayln lefts)
+  ;; (! displayln middles)
+  ;; (! displayln rights)
   [lsz <- (! <<v apply + 'o map size lefts)]
   [rsz <- (! <<v apply + 'o map size rights)]
   [msz <- (! size middles)]
@@ -101,7 +108,7 @@
                [else
                 [rights <- (! <<v reverse 'o Cons y 'o reverse rights)]
                 (! mk-deep lefts middles rights)])]))
-
+#;
 (do [e1 <- (! mk-elt 'x)]
     [e2 <- (! mk-elt 'y)]
   [e3 <- (! mk-elt 'z)]
@@ -128,14 +135,14 @@
 
 ;; warning: this is the bad order, but we've got very short lists here
 (def/copat (! append)
-  [(xs ys) [xys <- (! foldr xs Cons ys)] (! append xs)]
+  [(xs ys) [xys <- (! foldr xs Cons ys)] (! append xys)]
   [(xs) (ret xs)]
   [() (ret '())])
 
 ;; A -> A -> ... -> Listof (Node A)
 (def/copat (! mk-nodes)
-  [(a b #:bind) (! mk-node a b)]
-  [(a b c #:bind) (! mk-node a b c)]
+  [(a b #:bind) (! <<v List 'o mk-node a b)]
+  [(a b c #:bind) (! <<v List 'o mk-node a b c)]
   [(a b c d #:bind)
    [n1 <- (! mk-node a b)] [n2 <- (! mk-node c d)]
    (! List n1 n2)]
@@ -153,9 +160,10 @@
         [(! ft-single? fr)
          [xr <- (! ft-single-val fr)]
          (! <<v swap ft-snoc xr 'o swap multi-snoc xs fl)]
-        [else
+        [else ;; here
          [ll <- (! deep-lefts fl)] [ml <- (! deep-middles fl)] [rl <- (! deep-rights fl)]
          [lr <- (! deep-lefts fr)] [mr <- (! deep-middles fr)] [rr <- (! deep-rights fr)]
+         (! <<v append rl xs lr)
          [nodes <- (! <<v apply mk-nodes 'o append rl xs lr)]
          [mm <- (! app3 ml nodes mr)]
          (! mk-deep ll mm rr)])
@@ -177,10 +185,17 @@
 (def-thunk (! unsafe-unzip-at-list l ix)
   [hd <- (! car l)] [tl <- (! cdr l)]
   [hd-sz <- (! size hd)]
-  (cond [(! > hd-sz ix) (! List '() hd tl)]
+  (cond [(! > hd-sz ix)
+         (! displayln 'here-now)
+         (! displayln l)
+         (! displayln ix)
+         (! List '() hd tl)]
         [(! <= hd-sz ix)
+         (! displayln 'sndcase)
+         (! displayln tl)
          [unzipped <- (! <<v unsafe-unzip-at-list tl 'o - ix hd-sz)]
          [left <- (! first unzipped)] [middle <- (! second unzipped)] [right <- (! third unzipped)]
+         (! displayln 'didiimakeit)
          (! List (cons hd left) middle right)]))
 
 ;; A version of mk-deep that works when the left list is possibly empty
@@ -188,8 +203,8 @@
   (letrec
       ([view-l
         (~ (λ (t)
-             (do (! displayln 'view-l)
-                 (! displayln t)
+             (do ;(! displayln 'view-l)
+                 ;(! displayln t)
                (cond
                  [(! ft-mt? t) (ret '())]
                  [(! ft-single? t) [x <- (! ft-single-val t)] (! List x empty)]
@@ -204,8 +219,9 @@
                [(! empty? small)
                 [view <- (! view-l m)]
                 (cond [(! empty? view) (! fingertree<-list r)]
-                      [else [x <- (! first view)] [m-rest <- (! second view)]
-                            (! mk-deep (list x) m-rest r)])]
+                      [else [l <- (! <<v list<-node 'o first view)]
+                            [m-rest <- (! second view)]
+                            (! mk-deep l m-rest r)])]
                [else (! mk-deep small m r)])))])
     (! mk-deep-l)))
 
@@ -219,7 +235,8 @@
                [(! ft-single? t) [x <- (! ft-single-val t)] (! List empty x)]
                [else
                 [l <- (! deep-lefts t)] [m <- (! deep-middles t)] [r <- (! deep-rights t)]
-                [x <- (! <<v car 'o reverse r)] [small <- (! <<v reverse 'o cdr 'o reverse r)]
+                [x <- (! <<v list<-node 'o car 'o reverse r)]
+                [small <- (! <<v reverse 'o cdr 'o reverse r)]
                 [rest <- (! mk-deep-r l m small)]
                 (! List rest x)])))]
        [mk-deep-r
@@ -233,7 +250,11 @@
                [else (! mk-deep l m small)])))])
     (! mk-deep-r)))
 
+
 (def-thunk (! unsafe-unzip-at t ix)
+  ;; (! displayln 'unsafe-unzip-at)
+  ;; (! displayln t)
+  ;; (! displayln ix)
   (cond
     ;; impossible for it to be empty
     [(! ft-single? t)
@@ -253,29 +274,21 @@
         [rr <- (! mk-deep-l rl-list m r)]
         (! List ll x rr)]
        [(! <<v < ix 'o + lsize msize) ;; it's in m
-        [ix <- (! - ix lsize)]
-        (! displayln "should be 0")
+        (! displayln 'looking-at-the-middle)
+        (! displayln r)
         (! displayln ix)
+        [ix <- (! - ix lsize)]
         ;; find the Node that contains it in the deep tree
-        (! displayln m)
         [unzipped <- (! unsafe-unzip-at m ix)]
-        (! displayln 'unzipped1)
-        (! displayln unzipped)
         [lm-tree <- (! first unzipped)] [x-node <- (! second unzipped)] [rm-tree <- (! third unzipped)]
         [ix <- (! <<v - ix 'o size lm-tree)]
         [x-list <- (! list<-node x-node)]
-        (! displayln x-list)
         [unzipped <- (! unsafe-unzip-at-list x-list ix)]
-        (! displayln unzipped)
         [x-nodel <- (! first unzipped)] [x <- (! second unzipped)] [x-noder <- (! third unzipped)]
-        (! displayln 'mk-deep-r)
+        (! displayln 'see-me) ;; TODO: come back here
         [l <- (! mk-deep-r l lm-tree x-nodel)]
-        (! displayln 'mk-deep-l)
-        (! displayln x-noder)
-        (! displayln rm-tree)
-        (! displayln r)
+        (! displayln 'but-not-me)
         [r <- (! mk-deep-l x-noder rm-tree r)]
-        (! displayln 'beep)
         (! List l x r)]
        [else ;; it's in r
         [ix <- (! - ix lsize msize)]
@@ -286,3 +299,149 @@
         [ll <- (! mk-deep-r l m lr-list)]
         (! List ll x rr)])]))
 
+(def-thunk (! get t ix)
+  [view <- (! unsafe-unzip-at t ix)]
+  (! second view))
+
+(def-thunk (! insert-at t ix x)
+  [view <- (! unsafe-unzip-at t ix)]
+  [l <- (! first view)] [y <- (! second view)] [r <- (! third view)]
+  ;; (! displayln 'app3)
+  ;; (! displayln l)
+  ;; (! displayln (list x y))
+  ;; (! displayln r)
+  (! app3 l (list x y) r))
+
+;; delete-at : FingerTree A -> F (List A (FingerTree A))
+(def-thunk (! delete-at t ix)
+  [view <- (! unsafe-unzip-at t ix)]
+  [l <- (! first view)] [deleted <- (! second view)] [r <- (! third view)]
+  [t <- (! app3 l '() r)]
+  (! List deleted t))
+
+(def-thunk (! update-at t ix up)
+  [view <- (! unsafe-unzip-at t ix)]
+  [l <- (! first view)] [old-val <- (! second view)] [r <- (! third view)]
+  [new-val <- (! up old-val)]
+  (! app3 l new-val r))
+
+
+(def-thunk (! colist<-fingertree t)
+  (cond [(! ft-mt? t) (! cl-nil)]
+        [else
+         [view <- (! unsafe-unzip-at t 0)]
+         [hd <- (! first view)] [tl <- (! second view)]
+         (! cl-cons hd (~ (! colist<-fingertree tl)))]))
+
+;; A FlexVec A is a codata type implementing
+;; codata FlexVec A where
+;;   'remove  |- Nat -> F (List A (U FlexVec A))
+;;   'insert  |- Nat -> A -> F (U FlexVec A)
+;;   'get     |- Nat -> A -> F A
+;;   'update  |- Nat -> U(A -> F A) -> F (U FlexVec A)
+;; TODO, we should also implement
+;;   'size    |- F Nat (constant time)
+;; and maybe
+;;   'to-colist |- CoList A
+
+;; FingerTree (Elt A) -> FlexVec A
+(def-thunk (! flexvec<-fingertree tree)
+  (copat
+   [((= 'debug)) (ret tree)]
+   [((= 'get) ix) (! <<v elt-val 'o get tree ix)]
+   [((= 'remove) ix)
+    [x*tree <- (! delete-at tree ix)]
+    [x <- (! <<v elt-val 'o first x*tree)]
+    [tree <- (! second x*tree)]
+    (! List x (~ (! flexvec<-fingertree tree)))]
+   [((= 'cons) x)
+    [tree <- (! <<v swap ft-cons tree 'o mk-elt x)]
+    (ret (~ (! flexvec<-fingertree tree)))]
+   [((= 'insert) ix x)
+    [x-elt <- (! mk-elt x)]
+    [tree <- (! insert-at tree ix x-elt)]
+    (ret (~ (! flexvec<-fingertree tree)))]
+   [((= 'update) ix up)
+    [up = (~ (! <<v mk-elt 'o up 'o elt-val))]
+    [tree <- (! update-at tree ix up)]
+    (ret (~ (! flexvec<-fingertree tree)))]
+   [((= 'to-colist)) (! colist<-fingertree)]))
+
+(def-thunk (! mt-flexvec) (! flexvec<-fingertree empty))
+(def-thunk (! flexvec<-list xs)
+  [xs <- (! map mk-elt xs)]
+  [t <- (! app3 empty xs empty)]
+  (ret (~ (! flexvec<-fingertree t))))
+
+(define ex '(deep 5 ((elt 4) (elt 2) (elt 1) (elt 3)) empty ((elt 0))))
+(define ex2
+  '(deep 23 ((elt 16)) (deep 20 ((two 4 (two 3 (two 2 (elt 8) (elt 17)) (elt 18)) (elt 19))) empty ((two 6 (two 5 (two 4 (two 3 (two 2 (elt 4) (elt 9)) (elt 10)) (elt 20)) (elt 21)) (elt 22)) (two 10 (two 5 (two 4 (two 3 (two 2 (elt 2) (elt 5)) (elt 11)) (elt 12)) (elt 13)) (three 5 (three 3 (elt 1) (elt 6) (elt 3)) (elt 14) (elt 7))))) ((elt 15) (elt 0))))
+
+(define ex5
+  '(deep 9
+         ((elt 8) (elt 4) (two 2 (elt 2) (elt 5))) ;; bad!
+         (single (three 3 (elt 1) (elt 6) (elt 3)))
+         ((elt 7) (elt 0))))
+(define ex6
+  '(deep 8
+         ((elt 4))
+         (deep 5
+               ((two 2 (elt 2) (elt 5)))
+               empty
+               ((three 3 (elt 1) (elt 6) (elt 3))))
+         ((elt 7) (elt 0))))
+;; mk-deep-l bug:
+;;   args:
+;; '()
+;; '(deep 5 ((two 2 (elt 2) (elt 5))) empty ((three 3 (elt 1) (elt 6) (elt 3))))
+;; '((elt 7) (elt 0))
+;;   result, which has a left subtree with the wrong type:
+;; '(deep 7
+;;        ((two 2 (elt 2) (elt 5)))
+;;        (single (three 3 (elt 1) (elt 6) (elt 3)))
+;;        ((elt 7) (elt 0)))
+
+
+#;
+'(empty
+  (elt 4)
+  (deep 7
+        ((two 2 (elt 2) (elt 5)))
+        (single (three 3 (elt 1) (elt 6) (elt 3)))
+        ((elt 7) (elt 0))))
+
+;; problem case: (! insert-at ex6 0 '(elt 8)) == (ret ex5) which is bad
+(define exx
+ '(deep 10
+        ((elt 8))
+        (deep 7
+              ((two 2 (elt 4) (elt 9)) (two 2 (elt 2) (elt 5)))
+              empty
+              ((three 3 (elt 1) (elt 6) (elt 3))))
+        ((elt 7) (elt 0))))
+; (! insert-at exx 4 '(elt x)) errors but it shouldn't
+
+(define exl '(deep 4 ((elt 8)) (single (two 2 (elt 4) (elt 9))) ((elt 2))))
+(define exm '((elt x) (elt 5)))
+(define exr '(deep 5 ((elt 1) (elt 6) (elt 3)) empty ((elt 7) (elt 0))))
+; problem: (! app3 exl exm exr)
+
+;; '((deep 4
+;;         ((elt 8))
+;;         (single (two 2 (elt 4) (elt 9)))
+;;         ((elt 2)))
+;;   (elt 5)
+;;   (deep 5
+;;         ((elt 1) (elt 6) (elt 3))
+;;         empty
+;;         ((elt 7) (elt 0))))
+
+(define exa ;; looks valid
+  '(deep 11
+         ((elt 8))
+         (deep 8
+               ((two 2 (elt 4) (elt 9)))
+               empty
+               ((three 3 (elt 2) (elt 10) (elt 5)) (three 3 (elt 1) (elt 6) (elt 3))))
+         ((elt 7) (elt 0))))
+; (! insert-at exa 6 '(elt x))

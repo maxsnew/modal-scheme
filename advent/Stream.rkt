@@ -1,6 +1,7 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
+(require "CoList.rkt")
 (provide cycle stream-ref stream<-list
          stream-cons stream-const push-list
          take)
@@ -65,9 +66,9 @@
 ; Nat -> U Stream A -> CoList A
 (define-rec-thunk (! take n s)
   (cond
-    [(! zero? n) (ret '())]
+    [(! zero? n) (! cl-nil)]
     [#:else
      (do [n-1 <- (! - n 1)]
          [hd <- (! s 'hd)]
        [tl <- (! s 'tl)]
-       (ret (list 'cons hd (thunk (! take n-1 tl)))))]))
+       (! cl-cons hd (thunk (! take n-1 tl))))]))
