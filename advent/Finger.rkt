@@ -15,7 +15,9 @@
 (def-thunk (! node? x)
   (! and (~ (! cons? x))
      (~ (! or (~ (! <<v equal? 'two   'o first x))
-              (~ (! <<v equal? 'three 'o first x))))))
+           (~ (! <<v equal? 'three 'o first x))))))
+(def-thunk (! list<-node x) (! <<v cdr 'o cdr x))
+
 (def-thunk (! ft-single-val x) (! second x))
 (def-thunk (! ft-mt? x) (! <<v equal? 'empty x))
 (def-thunk (! ft-single? x)
@@ -158,4 +160,129 @@
          [mm <- (! app3 ml nodes mr)]
          (! mk-deep ll mm rr)])
   )
+
 (def-thunk (! app3^ t1 t2 xs) (! app3 t1 xs t2))
+
+(def-thunk (! fingertree<-list xs) (! app3 empty xs empty))
+
+;; We are going to
+;; unzip-at : FingerTree A -> Nat -> F (List (FingerTree A) A (FingerTree A))
+;; precondition: the index has to be < the size of the tree
+;; TODO: wrap this with something that guarantees the precondition
+
+
+;; unsafe-unzip-at-list : Listof A -> Nat -> F (List (List A) A (List A))
+;; where A is sizable
+;; the postcondition is that the sum of sizes of the left list is <= ix, but when combined with the middle A, is > ix
+(def-thunk (! unsafe-unzip-at-list l ix)
+  [hd <- (! car l)] [tl <- (! cdr l)]
+  [hd-sz <- (! size hd)]
+  (cond [(! > hd-sz ix) (! List '() hd tl)]
+        [(! <= hd-sz ix)
+         [unzipped <- (! <<v unsafe-unzip-at-list tl 'o - ix hd-sz)]
+         [left <- (! first unzipped)] [middle <- (! second unzipped)] [right <- (! third unzipped)]
+         (! List (cons hd left) middle right)]))
+
+;; A version of mk-deep that works when the left list is possibly empty
+(def-thunk (! mk-deep-l)
+  (letrec
+      ([view-l
+        (~ (λ (t)
+             (do (! displayln 'view-l)
+                 (! displayln t)
+               (cond
+                 [(! ft-mt? t) (ret '())]
+                 [(! ft-single? t) [x <- (! ft-single-val t)] (! List x empty)]
+                 [else
+                  [l <- (! deep-lefts t)] [m <- (! deep-middles t)] [r <- (! deep-rights t)]
+                  [x <- (! car l)] [small <- (! cdr l)]
+                  [rest <- (! mk-deep-l small m r)]
+                  (! List x rest)]))))]
+       [mk-deep-l
+        (~ (λ (small m r)
+             (cond
+               [(! empty? small)
+                [view <- (! view-l m)]
+                (cond [(! empty? view) (! fingertree<-list r)]
+                      [else [x <- (! first view)] [m-rest <- (! second view)]
+                            (! mk-deep (list x) m-rest r)])]
+               [else (! mk-deep small m r)])))])
+    (! mk-deep-l)))
+
+;; A version of mk-deep that works when the right list is possibly empty
+(def-thunk (! mk-deep-r)
+  (letrec
+      ([view-r
+        (~ (λ (t)
+             (cond
+               [(! ft-mt? t) (ret '())]
+               [(! ft-single? t) [x <- (! ft-single-val t)] (! List empty x)]
+               [else
+                [l <- (! deep-lefts t)] [m <- (! deep-middles t)] [r <- (! deep-rights t)]
+                [x <- (! <<v car 'o reverse r)] [small <- (! <<v reverse 'o cdr 'o reverse r)]
+                [rest <- (! mk-deep-r l m small)]
+                (! List rest x)])))]
+       [mk-deep-r
+        (~ (λ (l m small)
+             (cond
+               [(! empty? small)
+                [view <- (! view-r m)]
+                (cond [(! empty? view) (! fingertree<-list l)]
+                      [else [m-rest <- (! first view)] [x <- (! second view)] 
+                            (! mk-deep l m-rest (list x))])]
+               [else (! mk-deep l m small)])))])
+    (! mk-deep-r)))
+
+(def-thunk (! unsafe-unzip-at t ix)
+  (cond
+    ;; impossible for it to be empty
+    [(! ft-single? t)
+     [x <- (! ft-single-val t)]
+     (! List empty x empty)]
+    [else ;; deep
+     [sz <- (! deep-size t)]
+     [l <- (! deep-lefts t)] [m <- (! deep-middles t)] [r <- (! deep-rights t)]
+     [lsize <- (! <<v apply + 'o map size l)]
+     [msize <- (! size m)]
+     (cond
+       [(! < ix lsize);; it's in l
+        [unzipped <- (! unsafe-unzip-at-list l ix)]
+        [ll-list <- (! first unzipped)] [x <- (! second unzipped)] [rl-list <- (! third unzipped)]
+        ;; want ll x, (rl ++ m ++ r)
+        [ll <- (! fingertree<-list ll-list)]
+        [rr <- (! mk-deep-l rl-list m r)]
+        (! List ll x rr)]
+       [(! <<v < ix 'o + lsize msize) ;; it's in m
+        [ix <- (! - ix lsize)]
+        (! displayln "should be 0")
+        (! displayln ix)
+        ;; find the Node that contains it in the deep tree
+        (! displayln m)
+        [unzipped <- (! unsafe-unzip-at m ix)]
+        (! displayln 'unzipped1)
+        (! displayln unzipped)
+        [lm-tree <- (! first unzipped)] [x-node <- (! second unzipped)] [rm-tree <- (! third unzipped)]
+        [ix <- (! <<v - ix 'o size lm-tree)]
+        [x-list <- (! list<-node x-node)]
+        (! displayln x-list)
+        [unzipped <- (! unsafe-unzip-at-list x-list ix)]
+        (! displayln unzipped)
+        [x-nodel <- (! first unzipped)] [x <- (! second unzipped)] [x-noder <- (! third unzipped)]
+        (! displayln 'mk-deep-r)
+        [l <- (! mk-deep-r l lm-tree x-nodel)]
+        (! displayln 'mk-deep-l)
+        (! displayln x-noder)
+        (! displayln rm-tree)
+        (! displayln r)
+        [r <- (! mk-deep-l x-noder rm-tree r)]
+        (! displayln 'beep)
+        (! List l x r)]
+       [else ;; it's in r
+        [ix <- (! - ix lsize msize)]
+        [unzipped <- (! unsafe-unzip-at-list r ix)]
+        [lr-list <- (! first unzipped)] [x <- (! second unzipped)] [rr-list <- (! third unzipped)]
+        ;; want (l ++ m ++ lr) x rr
+        [rr <- (! fingertree<-list rr-list)]
+        [ll <- (! mk-deep-r l m lr-list)]
+        (! List ll x rr)])]))
+
