@@ -46,42 +46,48 @@
   [ns <- (! nums)]
   (! apply parse ns))
 
+;; Listof Nat -> Stream Nat
+(def-thunk (! stream<-totals tots)
+  (! stream-cons
+     0
+     (~ (! push-list tots (~ (! stream-const 0))))))
+
 (def-thunk (! parse-b)
   (letrec
    ;; (U(Nat -> 'stk -> Nat ... -> F Nat) -> Nat -> 'stk -> Nat -> Nat -> ... -> F Nat
    ([tree ;; I only need to know my destination and the total so far
      (~ (copat [(k tot (= 'stk) children# metadata#)
-                [k <-
-                   (cond
-                     [(! equal? 0 children#)
-                      (ret (~ (! add-metadata k metadata#)))]
-                     [else (ret (~ (! deref-metadata k metadata#)))])]
-                (! forest k children# '() tot 'stk)]))]
+                (cond [(! equal? 0 children#)
+                       (! add-metadata k metadata# tot 'stk)]
+                      [else
+                       [k = (~ (! deref-metadata k metadata#))]
+                       (! forest k children# '() tot 'stk)])]))]
+    [add-metadata
+     (~ (copat
+         [(k     (= 0) tot (= 'stk)) (! k tot 'stk)]
+         [(k metadata# tot (= 'stk) n)
+          [metadata# <- (! - metadata# 1)] [tot <- (! + tot n)]
+          (! add-metadata k metadata# tot 'stk)]))]
+    [forest
+     (~ (copat
+         [(k (= 0) tots tot (= 'stk))
+          [tots <- (! reverse tots)]
+          (! k (~ (! stream<-totals tots)) tot 'stk)]
+         [(k children# tots tot (= 'stk))
+          [children# <- (! - children# 1)]
+          [k = (~
+                (copat
+                 [(sub-tot (= 'stk))
+                  (! forest k children# (cons sub-tot tots) tot 'stk)]))]
+          (! tree k 0 'stk)]))]
     [deref-metadata
      (~ (copat
          [(k     (= 0) tots tot (= 'stk)) (! k tot 'stk)]
          [(k metadata# tots tot (= 'stk) ix)
           [metadata# <- (! - metadata# 1)]
+          (! stream-ref tots ix)
           [tot <- (! <<v + tot 'o stream-ref tots ix)]
-          (! deref-metadata k metadata# tots tot 'stk)]))]
-    [add-metadata
-     (~ (copat
-         [(k     (= 0) _ tot (= 'stk)) (! k tot 'stk)]
-         [(k metadata# _ tot (= 'stk) n)
-          [metadata# <- (! - metadata# 1)] [tot <- (! + tot n)]
-          (! add-metadata k metadata# #f tot 'stk)]))]
-    [forest
-     (~ (copat
-         [(k (= 0) tots tot (= 'stk))
-          [tots <- (! reverse tots)]
-          (! k (~ (! stream<-list tots)) tot 'stk)]
-         [(k children# tots tot (= 'stk))
-          [children# <- (! - children# 1)]
-          [k = (~
-                (copat
-                 [(tot (= 'stk))
-                  (! forest k children# (cons tot tots) tot 'stk)]))]
-          (! tree k tot 'stk)]))])
+          (! deref-metadata k metadata# tots tot 'stk)]))])
     (! tree abort 0 'stk)))
 
 (def-thunk (! main-b)

@@ -1,11 +1,13 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-(provide cycle stream-ref stream<-list)
+(provide cycle stream-ref stream<-list
+         stream-cons stream-const push-list
+         take)
 
 ;; codata Stream A where
 ;;   'hd |- F A
-;;   'tl |- F (Cons A (U Colist))
+;;   'tl |- F (U (Stream A))
 (define-rec-thunk (! cycle^ og-hd og-tl cur nexts)
   (copat
    [((= 'hd) #:bind) (ret cur)]
@@ -29,6 +31,24 @@
          (do [tl <- (! s 'tl)]
              [n-1 <- (! - n 1)]
            (! stream-ref tl n-1))]))
+
+(def-thunk (! stream-cons hd tl)
+  (copat
+   [((= 'hd)) (ret hd)]
+   [((= 'tl)) (ret tl)]))
+
+(def/copat (! stream-const)
+  [(x (= 'hd)) (ret x)]
+  [(x (= 'tl)) (ret (~ (! stream-const x)))])
+
+(def-thunk (! push-list l s)
+  (cond [(! empty? l) (! s)]
+        [else
+         (copat
+          [((= 'hd)) (! car l)]
+          [((= 'tl))
+           [tl <- (! cdr l)]
+           (ret (~ (! push-list tl s)))])]))
 
 (define-rec-thunk (! stream<-list l)
   (copat
