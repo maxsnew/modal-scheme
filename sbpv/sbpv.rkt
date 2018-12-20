@@ -52,6 +52,7 @@
 (require-fo-wrapped-provide racket/base +)
 (require-fo-wrapped-provide racket/base abs)
 (require-fo-wrapped-provide racket/base *)
+(require-fo-wrapped-provide racket/base quotient)
 (require-fo-wrapped-provide racket/base /)
 (require-fo-wrapped-provide racket zero?)
 (require-fo-wrapped-provide racket/base -)
