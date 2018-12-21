@@ -186,16 +186,16 @@
   [hd <- (! car l)] [tl <- (! cdr l)]
   [hd-sz <- (! size hd)]
   (cond [(! > hd-sz ix)
-         (! displayln 'here-now)
-         (! displayln l)
-         (! displayln ix)
+         ;(! displayln 'here-now)
+         ;(! displayln l)
+         ;(! displayln ix)
          (! List '() hd tl)]
         [(! <= hd-sz ix)
-         (! displayln 'sndcase)
-         (! displayln tl)
+         ;(! displayln 'sndcase)
+         ;(! displayln tl)
          [unzipped <- (! <<v unsafe-unzip-at-list tl 'o - ix hd-sz)]
          [left <- (! first unzipped)] [middle <- (! second unzipped)] [right <- (! third unzipped)]
-         (! displayln 'didiimakeit)
+         ;(! displayln 'didiimakeit)
          (! List (cons hd left) middle right)]))
 
 ;; A version of mk-deep that works when the left list is possibly empty
@@ -228,26 +228,30 @@
 ;; A version of mk-deep that works when the right list is possibly empty
 (def-thunk (! mk-deep-r)
   (letrec
+      ;; view-r : FingerTree A -> F(List FTree A)
       ([view-r
         (~ (λ (t)
-             (cond
-               [(! ft-mt? t) (ret '())]
-               [(! ft-single? t) [x <- (! ft-single-val t)] (! List empty x)]
-               [else
-                [l <- (! deep-lefts t)] [m <- (! deep-middles t)] [r <- (! deep-rights t)]
-                [x <- (! <<v list<-node 'o car 'o reverse r)]
-                [small <- (! <<v reverse 'o cdr 'o reverse r)]
-                [rest <- (! mk-deep-r l m small)]
-                (! List rest x)])))]
+             (do ;(! displayall 'view-r t)
+                 (cond
+                   [(! ft-mt? t) (ret '())]
+                   [(! ft-single? t) [x <- (! ft-single-val t)] (! List empty x)]
+                   [else
+                    [l <- (! deep-lefts t)] [m <- (! deep-middles t)] [r <- (! deep-rights t)]
+                    [x <- (! <<v car 'o reverse r)]
+                    [small <- (! <<v reverse 'o cdr 'o reverse r)]
+                    [rest <- (! mk-deep-r l m small)]
+                    (! List rest x)]))))]
        [mk-deep-r
         (~ (λ (l m small)
-             (cond
-               [(! empty? small)
-                [view <- (! view-r m)]
-                (cond [(! empty? view) (! fingertree<-list l)]
-                      [else [m-rest <- (! first view)] [x <- (! second view)] 
-                            (! mk-deep l m-rest (list x))])]
-               [else (! mk-deep l m small)])))])
+             (do ;(! displayall 'mk-deep-r l m small)
+              (cond
+                [(! empty? small)
+                 [view <- (! view-r m)]
+                 ;(! displayall 'view-r-return view)
+                 (cond [(! empty? view) (! fingertree<-list l)]
+                       [else [m-rest <- (! first view)] [r <- (! <<v list<-node 'o second view)]
+                             (! mk-deep l m-rest r)])]
+                [else (! mk-deep l m small)]))))])
     (! mk-deep-r)))
 
 
@@ -274,9 +278,9 @@
         [rr <- (! mk-deep-l rl-list m r)]
         (! List ll x rr)]
        [(! <<v < ix 'o + lsize msize) ;; it's in m
-        (! displayln 'looking-at-the-middle)
-        (! displayln r)
-        (! displayln ix)
+        ;(! displayln 'looking-at-the-middle)
+        ;(! displayln r)
+        ;(! displayln ix)
         [ix <- (! - ix lsize)]
         ;; find the Node that contains it in the deep tree
         [unzipped <- (! unsafe-unzip-at m ix)]
@@ -285,9 +289,9 @@
         [x-list <- (! list<-node x-node)]
         [unzipped <- (! unsafe-unzip-at-list x-list ix)]
         [x-nodel <- (! first unzipped)] [x <- (! second unzipped)] [x-noder <- (! third unzipped)]
-        (! displayln 'see-me) ;; TODO: come back here
+        ;(! displayall 'mk-deep-r l lm-tree x-nodel)
         [l <- (! mk-deep-r l lm-tree x-nodel)]
-        (! displayln 'but-not-me)
+        ;(! displayln 'but-not-me)
         [r <- (! mk-deep-l x-noder rm-tree r)]
         (! List l x r)]
        [else ;; it's in r
@@ -323,14 +327,13 @@
   [view <- (! unsafe-unzip-at t ix)]
   [l <- (! first view)] [old-val <- (! second view)] [r <- (! third view)]
   [new-val <- (! up old-val)]
-  (! app3 l new-val r))
-
+  (! app3 l (list new-val) r))
 
 (def-thunk (! colist<-fingertree t)
   (cond [(! ft-mt? t) (! cl-nil)]
         [else
          [view <- (! unsafe-unzip-at t 0)]
-         [hd <- (! first view)] [tl <- (! second view)]
+         [hd <- (! second view)] [tl <- (! third view)]
          (! cl-cons hd (~ (! colist<-fingertree tl)))]))
 
 ;; A FlexVec A is a codata type implementing
@@ -363,9 +366,11 @@
     (ret (~ (! flexvec<-fingertree tree)))]
    [((= 'update) ix up)
     [up = (~ (! <<v mk-elt 'o up 'o elt-val))]
+    ;(! displayall 'update tree ix)
     [tree <- (! update-at tree ix up)]
     (ret (~ (! flexvec<-fingertree tree)))]
-   [((= 'to-colist)) (! colist<-fingertree)]))
+   [((= 'to-colist))
+    (! <<n cl-map elt-val 'o colist<-fingertree tree)]))
 
 (def-thunk (! mt-flexvec) (! flexvec<-fingertree empty))
 (def-thunk (! flexvec<-list xs)
@@ -445,3 +450,10 @@
                ((three 3 (elt 2) (elt 10) (elt 5)) (three 3 (elt 1) (elt 6) (elt 3))))
          ((elt 7) (elt 0))))
 ; (! insert-at exa 6 '(elt x))
+
+;; bug:
+;; (! mk-deep-r
+;;    '((elt 8))
+;;    '(deep 5 ((two 2 (elt 4) (elt 9))) empty ((three 3 (elt 2) (elt 10) (elt 5))))
+;;    '())
+

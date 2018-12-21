@@ -8,7 +8,11 @@
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
          range cartesian-product sep-by
-         cl-zipwith)
+         cl-zipwith cl-last
+
+         monoid-cl-foldl
+         minimum-monoid
+         )
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
 ;;   '(nil)
@@ -204,3 +208,31 @@
                              (! <<v swap cl-cons (~ (! loop '() tl)) 'o reverse acc)]
                             [else (! loop (cons hd acc) tl)])])]))])
     (! loop '() c)))
+
+(def-thunk (! cl-last-loop x c)
+  [v <- (! c)]
+  (cond [(! clv-nil? v) (ret x)]
+        [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+              (! cl-last-loop hd tl)]))
+(def-thunk (! cl-last c #:bind)
+  [v <- (! c)]
+  (cond [(! clv-nil? v) (error "called cl-last with an empty colist!")]
+        [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+              (! cl-last-loop hd tl)]))
+
+(define-thunk (! monoid-cl-foldl)
+  (copat
+   [(m)
+    (do [* <- (! first m)]
+        [e <- (! second m)]
+      (! cl-foldl^ * e))]))
+
+;; A Monoid for a type A is a (list (A -> A -> F A) A)
+
+(define-thunk (! minimum-monoid <= bot)
+  (ret (list
+        (thunk
+         (copat
+          [(x y)
+           (cond [(! <= x y) (ret x)] [#:else (ret y)])]))
+        bot)))

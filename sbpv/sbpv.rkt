@@ -99,6 +99,7 @@
 (require-fo-wrapped-provide racket/base make-vector)
 (require-fo-wrapped-provide racket/base vector?)
 (require-fo-wrapped-provide racket/base vector-ref)
+(require-fo-wrapped-provide racket/base vector-length)
 (require-fo-wrapped-provide racket/base vector-set!)
 (require-fo-wrapped-provide racket/base list->vector)
 (require-wrapped-provide racket/base sort)
