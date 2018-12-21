@@ -8,7 +8,7 @@
          list first second third fourth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
          copat length Ret cond
-         and or foldl foldl^ foldr foldr^ map filter ~ @>
+         and or foldl foldl^ foldr foldr^ map filter ~ @> @>>
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
          <<v <<n oo idiom idiom^
          ;; debugging stuff
@@ -607,6 +607,7 @@
   [(f (upto xs '@)) [g <- (! apply f xs)] (! oo g)]
   [(f) (! f)])
 (def-thunk (! @> x f) (! f x))
+(def-thunk (! @>> xs f) (! apply f xs))
 (def-thunk (! foldl^ step acc l) (! foldl l step acc))
 (def-thunk (! foldr l step acc) (! <<v foldl^ (~ (! swap step)) acc 'o reverse l))
 (def-thunk (! foldr^ step acc l) (! foldr l step acc))

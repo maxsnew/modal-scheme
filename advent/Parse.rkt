@@ -33,10 +33,17 @@
        (do [n <- (! + 1 n)]
            (! digit<-char-loop c n ds))])))
 
-(define-thunk (! digit<-char c)
+(def-thunk (! digit<-char c)
   (! digit<-char-loop c 0 DIGITS))
 
 ;; ds should be a list of digits: characters \0 to \9
+(def-thunk (! parse-num-loop acc)
+  (copat
+   [(#:bind) (ret acc)]
+   [(d) [n <- (! digit<-char d)]
+        [acc <- (! <<v + n 'o * 10 acc '$)]
+        (! parse-num-loop acc)]))
+#;
 (define-rec-thunk (! parse-num-loop acc ds)
   (cond
     [(! null? ds) (ret acc)]
@@ -47,7 +54,12 @@
        [acc <- (! <<v + n 'o * 10 acc '$)]
        [(! parse-num-loop acc ds)])]))
 
+(def/copat (! parse-num^)
+  [((= #\+)) (! parse-num-loop 0)]
+  [((= #\-)) (! <<v - 'o parse-num-loop 0)]
+  [() (! parse-num-loop 0)])
+
 ;; Parses a list of characters into a natural number
 ;; Listof Char -> F Nat
 (define-thunk (! parse-num ds)
-  (! parse-num-loop 0 ds))
+  (! apply parse-num^ ds))
