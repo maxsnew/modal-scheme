@@ -52,6 +52,7 @@
 (require-fo-wrapped-provide racket/base +)
 (require-fo-wrapped-provide racket/base abs)
 (require-fo-wrapped-provide racket/base *)
+(require-fo-wrapped-provide racket/base truncate)
 (require-fo-wrapped-provide racket/base modulo)
 (require-fo-wrapped-provide racket/base quotient)
 (require-fo-wrapped-provide racket/base /)
@@ -101,6 +102,7 @@
 (require-fo-wrapped-provide racket/base vector-ref)
 (require-fo-wrapped-provide racket/base vector-length)
 (require-fo-wrapped-provide racket/base vector-set!)
+(require-fo-wrapped-provide racket/base vector-fill!)
 (require-fo-wrapped-provide racket/base list->vector)
 (require-wrapped-provide racket/base sort)
 

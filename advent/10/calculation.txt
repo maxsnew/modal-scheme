@@ -1,0 +1,19 @@
+given xi (t) = dxi * t + xi (0)
+      yi (t) = dxi * t + xi (0)
+want to find t that minimizes (x1 - x2)^2 + (y1 - y2)^2
+(dx1*t + x_1 - dx2 * t + x_2) = (dx1 - dx2)t + (x_1 - x_2)
+
+closed form:
+(dx1 - dx2)^2t^2 + 2 (x_1 - x_2) (dx1 - dx2)t + (x_1 - x_2)^2
++ (dy1 - dy2)^2t^2 + 2 (y_1 - y_2) (dy1 - dy2)t + (y_1 - y_2)^2
+
+take the derivative
+2(dx1 - dx2)^2t + 2 (x_1 - x_2) (dx1 - dx2)
++ 2(dy1 - dy2)^2t + 2 (y_1 - y_2) (dy1 - dy2)
+=
+(2 (dx1 - dx2)^2 + 2 (dy - dy2)^2)t + 2 (x_1 - x_2) (dx1 - dx2) + 2 (y_1 - y_2) (dy1 - dy2)
+
+solve for 0:
+(2 (dx1 - dx2)^2 + 2 (dy - dy2)^2)t = - 2 (x_1 - x_2) (dx1 - dx2) - 2 (y_1 - y_2) (dy1 - dy2)
+
+t = (- 2 (x_1 - x_2) (dx1 - dx2) - 2 (y_1 - y_2) (dy1 - dy2)) / (2 (dx1 - dx2)^2 + 2 (dy - dy2)^2)
