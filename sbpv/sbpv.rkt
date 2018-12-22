@@ -77,6 +77,7 @@
 (require-fo-wrapped-provide racket/base read-line)
 (require-fo-wrapped-provide racket/base read-char)
 (require-fo-wrapped-provide racket/base displayln)
+(require-fo-wrapped-provide racket/base display)
 (require-fo-wrapped-provide racket/base string->list)
 (require-fo-wrapped-provide racket/base list->string)
 (require-fo-wrapped-provide racket/base char-upcase)
