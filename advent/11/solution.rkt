@@ -51,6 +51,13 @@
   (ret (~ (! region<-vec v min-x x-size min-y y-size vec-size))))
 
 
+(define-thunk (! pb f comparator x y)
+  (do [x <- (! f x)] [y <- (! f y)]
+    (! comparator x y)))
+
+(define-thunk (! maximum-by f f*-inf)
+  (do [m <- (! minimum-monoid (thunk (! pb f >=)) f*-inf)]
+   (! monoid-cl-foldl m)))
 
 (def-thunk (! main-a)
   [r <- (! mk-region 1 301 1 301)]
@@ -64,18 +71,23 @@
   [3x3-power
    = (~ (λ (xy)
           (do [x <- (! first xy)] [y <- (! second xy)]
-            (cond
-              [(! and (~ (! <<v >= 300 'o + x 2)) (~ (! <<v >= 300 'o + y 2)))
-               [3x3-power <- (! <<n cl-foldl^ + 0 'o cl-map (~ (! apply read-power)) 'o
-                    cartesian-product (~ (! <<v range x 'o + x 3)) (~ (! <<v range y 'o + y 3)))]
-               (! cl-cons (list 3x3-power x y) cl-nil)]
-              [else (! cl-nil)]))))]
+              (cond
+                [(! and (~ (! <<v >= 300 'o + x 2)) (~ (! <<v >= 300 'o + y 2)))
+                 [3x3-power <- (! <<n cl-foldl^ + 0 'o cl-map (~ (! apply read-power)) 'o
+                                  cartesian-product (~ (! <<v range x 'o + x 3)) (~ (! <<v range y 'o + y 3)))]
+                 (! cl-cons (list 3x3-power x y) cl-nil)]
+                [else (! cl-nil)]))))]
   [display-row
    = (~ (λ (row)
-          (do (! cl-foreach (~ (λ (x) (do (! display x) (! display " ")))) row)
+          (do (! cl-foreach (~ (do (λ (x) (do (! display x) (! display " "))))) row)
               (! display "\n"))))]
-  [3x3-powers = (~ (! cl-bind 3x3-power 'o cartesian-product (~ (! range 1 301)) (~ (! range 1 301))))]
-  (! <<n cl-foreach displayln 3x3-powers))
+  [3x3-powers = (~ (! <<n cl-bind^ 3x3-power 'o
+                      cartesian-product (~ (! range 1 301)) (~ (! range 1 301))))]
+  ;; (! list<-colist 3x3-powers)
+  ;(! cl-foreach displayln 3x3-powers)
+  (! <<n cl-foreach displayln 'o 3x3-power (list 21 61))
+  #;
+  (! maximum-by first (list -inf.0 #f #f) 3x3-powers))
 
 (def-thunk (! main-b)
   (ret 'not-done-yet))
