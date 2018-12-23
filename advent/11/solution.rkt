@@ -7,8 +7,9 @@
 
 (provide main-a main-b)
 
-(define SERIAL-NUMBER 18)
-;; (define SERIAL-NUMBER 1718)
+;; (define SERIAL-NUMBER 18)
+;; (define SERIAL-NUMBER 42)
+(define SERIAL-NUMBER 1718)
 
 (def-thunk (! hundreds-place n)
   [n <- (! quotient n 100)]
@@ -65,9 +66,12 @@
                     (do [x <- (! first xy)] [y <- (! second xy)]
                       [xy-power <- (! power x y)]
                       (! r 'set x y xy-power))))]
+  #;
   (! <<n cl-foreach set-power 'o cartesian-product (~ (! range 1 301)) (~ (! range 1 301)))
   [read-power
-   = (~ (! r 'get))]
+   = ;(~ (! r 'get))
+   power
+   ]
   [3x3-power
    = (~ (λ (xy)
           (do [x <- (! first xy)] [y <- (! second xy)]
@@ -75,6 +79,7 @@
                 [(! and (~ (! <<v >= 300 'o + x 2)) (~ (! <<v >= 300 'o + y 2)))
                  [3x3-power <- (! <<n cl-foldl^ + 0 'o cl-map (~ (! apply read-power)) 'o
                                   cartesian-product (~ (! <<v range x 'o + x 3)) (~ (! <<v range y 'o + y 3)))]
+                 ; (! displayall '3x3-power 3x3-power x y)
                  (! cl-cons (list 3x3-power x y) cl-nil)]
                 [else (! cl-nil)]))))]
   [display-row
@@ -85,8 +90,7 @@
                       cartesian-product (~ (! range 1 301)) (~ (! range 1 301))))]
   ;; (! list<-colist 3x3-powers)
   ;(! cl-foreach displayln 3x3-powers)
-  (! <<n cl-foreach displayln 'o 3x3-power (list 21 61))
-  #;
+  ;; (! <<n cl-foreach displayln 'o 3x3-power (list 21 61))
   (! maximum-by first (list -inf.0 #f #f) 3x3-powers))
 
 (def-thunk (! main-b)
