@@ -1,3 +1,5 @@
+* TODO Applications
+  - [ ] Interpreters
 * TODO
   1. [-] Make a #lang
      1. [X] define works
@@ -9,10 +11,12 @@
      SBPV
   4. [ ] Implement some codata: streams, Haskell lists, parser
      combinator library
-* TODO Copattern Matching
+* TODO (Co)Pattern Matching
   - [X] Add literal matching
   - [X] Add capture up to a literal
-* TODO Macros
-  - [ ] cond
-* TODO Functions
-  - [ ] CBV currying composition
+  - [X] Pattern Matching
+  - [ ] struct or Data/Codata forms ala Pyret/PLAI
+* DONE Macros
+  - [X] cond
+* DONE Functions
+  - [X] CBV currying composition
