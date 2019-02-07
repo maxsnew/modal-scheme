@@ -1,6 +1,6 @@
 * TODO Applications
   - [ ] Interpreters
-* TODO
+* TODO Overall
   1. [-] Make a #lang
      1. [X] define works
      2. [ ] require across sbpv modules
@@ -14,7 +14,9 @@
 * TODO (Co)Pattern Matching
   - [X] Add literal matching
   - [X] Add capture up to a literal
-  - [X] Pattern Matching
+  - [-] Pattern Matching
+    - [X] cons matching
+    - [ ] List matching
   - [ ] struct or Data/Codata forms ala Pyret/PLAI
 * DONE Macros
   - [X] cond

@@ -49,6 +49,10 @@
     [(_ lib x)
      ]))
 
+(require-fo-wrapped-provide racket/base error)
+(require-fo-wrapped-provide racket/base box)
+(require-fo-wrapped-provide racket/base unbox)
+(require-fo-wrapped-provide racket/base set-box!)
 (require-fo-wrapped-provide racket/base +)
 (require-fo-wrapped-provide racket/base abs)
 (require-fo-wrapped-provide racket/base *)
@@ -131,7 +135,7 @@
   (⊢ e ≫ e- ⇐ value)
   ----------------
   (⊢
-   (let- ([x (unbox st)])
+   (let- ([x (unbox- st)])
      (if- (null?- x)
           e-
           (error- (format "expected a return address on the stack but got stack ~a" x))))
@@ -142,10 +146,10 @@
   ((x ≫ x- : value) ⊢ e^ ≫ e^- ⇐ computation)
   -----------------
   (⊢ (let- ()
-       (define tmp (unbox st)) ;; Save the current stack
-       (set-box! st '())       ;; Hide the stack from e
+       (define tmp (unbox- st)) ;; Save the current stack
+       (set-box!- st '())       ;; Hide the stack from e
        (define x- e-)          ;; run e
-       (set-box! st tmp)       ;; restore the stack
+       (set-box!- st tmp)       ;; restore the stack
        e^-)
      ⇒ computation))
 
@@ -171,7 +175,7 @@
   [(_ (x xs ...) ebod) ≫
    ------------------
    [≻ (case-λ
-       [(#:bind) (error "expected more arguments but didn't get them")]
+       [(#:bind) (! error "expected more arguments but didn't get them")]
        [(x) (λ (xs ...) ebod)])]])
 
 (define-typed-syntax (cons e es) ≫
@@ -214,7 +218,7 @@
   (⊢ e2 ≫ e2- ⇐ value)
   ----------------
   (⊢ (let- ()
-           (set-box! st (cons- e2- (unbox st)))
+           (set-box!- st (cons- e2- (unbox- st)))
            e1-)
      ⇒ computation))
 
@@ -226,6 +230,7 @@
    -----------------
    [≻ (many-app (^ e x) xs ...)]])
 
+#;
 (define-typed-syntax (error e ...) ≫
   (⊢ e ≫ e- ⇐ value) ...
   ---------------------------
