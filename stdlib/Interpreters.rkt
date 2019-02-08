@@ -1,7 +1,11 @@
 #lang sbpv
 
 (require "../stdlib.rkt")
-;; Let's write a sbpv interpreter! We'll include bits and funs
+
+;; Let's write some cbpv interpreters in sbpv. Why interpreters?
+;; Because they naturally lead to the use of user-defined effects, and
+;; we want to figure out what a good abstraction of effects is in
+;; CBPV.
 
 ;; First, we'll make a De-Bruijn style interpreter
 ;; DBIx = Nat
@@ -121,6 +125,16 @@
 ;; [[G,x]] -> B = SVal -> [[G]] -> B
 ;; db-interp2 'v : (G |- Val)  -> [[G]] -> F SVal
 ;; db-interp2 'c : (G |- Comp) -> [[G]] -> SComp
+
+;; This one has the object language environment on the stack, using a
+;; marker eoG to delimit the environment from the object lang stack.
+;;
+;; This has the disadvantage of requiring a lot of stack copying,
+;; because the environment needs to be duplicated, so there's a lot of
+;; "thrashing": the environment is repeatedly removed from the stack
+;; and then placed back on top.
+;; The advantage that it is sort of "pure lambda calculus", just
+;; functions, no datatypes.
 (define eoG 'end-of-environment)
 (def/copat (! db-interp2)
   ;; value cases
@@ -167,34 +181,99 @@
   [((= 'c) (cons (= 'beep) (cons c _)))
    (! displayall 'beep)
    (! db-interp2 'c c)])
+(def-thunk (! run2 c) (! db-interp2 'c c eoG) )
 
-(def-thunk (! run c) (! db-interp2 'c c eoG))
+;; SVal  = Bool \+/ (St * [Closure[SComp]])
+;; SComp = Args[St -> Env[SVal]]
 
-(do (! test-equal! (~ (! <<v get-val 'o interpc (list 'ret 'true))) (~ (ret 'true)))
-    (! test-equal! (~ (! <<v get-val 'o interpc ex0)) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v get-val 'o interpc ex1)) (~ (ret 'false)))
-  (! test-equal! (~ (! <<v get-val 'o interpc ex2)) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v first 'o get-val 'o interpc thk-ex1)) (~ (ret 'closure)))
-  (! test-equal! (~ (! <<v third 'o get-val 'o interpc thk-ex1)) (~ (ret '(true))))
-  (! test-equal! (~ (! <<v get-val 'o interpc thk-ex2)) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v get-val 'o interpc '(if true (ret false) (ret true))))
+;; SVal  = Bool \+/ Cons SVal SVal \+/ U SComp
+;; SComp =           SVal -> SComp /*\ F SVal
+;;   [[-]] = 'nil
+;; [[G,x]] = (cons SVal [[G]])
+;; db-interp3 'v : (G |- Val)  -> [[G]] -> F SVal
+;; db-interp3 'c : (G |- Comp) -> [[G]] -> SComp
+
+;; This is a simpler implementation using environments represented as
+;; a list. This has the performance advantage that 
+(def/copat (! db-interp3)
+  ;; value cases
+  [((= 'v) (cons (= 'var) (cons x _)))
+   ;(! displayall 'case 'var)
+   (! apply (~ (! db-lookup x)))]
+  [((= 'v) (cons (= 'thunk) (cons c _)) env)
+   ;; (! displayall 'case 'thunk)
+   (ret (list 'thunk (~ (! db-interp3 'c c env))))]
+  [((= 'v) v env) (ret v)]
+  ;; comp cases
+  [((= 'c) (cons (= 'ret) (cons x _)) env)
+   ;; (! displayall 'case 'ret)
+   (copat
+    [(#:bind) (! db-interp3 'v x env)]
+    [((rest args)) (! error 'db-interp3 "object lang function tried to return, but the stack was non-empty: ~v" args)])]
+  [((= 'c) (cons (= 'bind) (cons c (cons k _))) env)
+   ;; (! displayall 'case 'bind)
+   [v <- (! db-interp3 'c c env)]
+   (! db-interp3 'c k (cons v env))]
+  [((= 'c) (cons (= 'force) (cons v _)) env)
+   ;; (! displayall 'force v)
+   (pm (! db-interp3 'v v env)
+       [(cons (= 'thunk) (cons th _)) (! th)]
+       [v (! error 'db-interp3 "tried to force a non-thunk: ~v" v)])]
+  [((= 'c) (cons (= 'lambda) (cons c _)) env)
+   (copat
+    [(arg) (! db-interp3 'c c (cons arg env))]
+    [() (! error 'db-interp3 "object lang expected an arg but there wasn't one")])]
+  [((= 'c) (cons (= 'app) (cons c (cons v _))) env)
+   [sv <- (! db-interp3 'v v env)]
+   (! db-interp3 'c c env sv)]
+  [((= 'c) (cons (= 'if) (cons v (cons ct (cons cf _)))) env)
+   [sv <- (! db-interp3 'v v env)]
+   [c <- (pm (ret sv)
+             [(= 'true) (ret ct)]
+             [(= 'false) (ret cf)]
+             [_ (! error 'db-interp3 "called if on ~v" sv)])]
+   (! db-interp3 'c c env)]
+  [((= 'c) (cons (= 'beep) (cons c _)))
+   (! displayall 'beep)
+   (! db-interp3 'c c)])
+
+(def-thunk (! run3 c) (! db-interp3 'c c '()))
+
+(do (! test-equal! (~ (! interpc '(inc (inc (dec (ret true)))))) (~ (ret '(val: true state: 1))))
+    (! test-equal! (~ (! <<v run2 (list 'ret 'true))) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run2 ex0)) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run2 ex1)) (~ (ret 'false)))
+  (! test-equal! (~ (! <<v run2 ex2)) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v first 'o run2 thk-ex1)) (~ (ret 'thunk)))
+  (! test-equal! (~ (! <<v run2 thk-ex2)) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run2 '(if true (ret false) (ret true))))
      (~ (ret 'false)))
-  (! test-equal! (~ (! <<v get-val 'o interpc '(if false (ret false) (ret true))))
+  (! test-equal! (~ (! <<v run2 '(if false (ret false) (ret true))))
      (~ (ret 'true)))
-  (! test-equal! (~ (! interpc '(inc (inc (dec (ret true)))))) (~ (ret '(val: true state: 1))))
-  (! test-equal! (~ (! <<v run (list 'ret 'true))) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v run ex0)) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v run ex1)) (~ (ret 'false)))
-  (! test-equal! (~ (! <<v run ex2)) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v first 'o run thk-ex1)) (~ (ret 'thunk)))
-  (! test-equal! (~ (! <<v run thk-ex2)) (~ (ret 'true)))
-  (! test-equal! (~ (! <<v run '(if true (ret false) (ret true))))
+  (! test-equal! (~ (! run2 '(bind (ret (thunk (lambda (lambda (app (force (var 1)) (var 0))))))
+                                   (app (app (force (var 0)) (thunk (lambda (ret (var 0))))) true))))
+     (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run3 (list 'ret 'true))) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run3 ex0)) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run3 ex1)) (~ (ret 'false)))
+  (! test-equal! (~ (! <<v run3 ex2)) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v first 'o run3 thk-ex1)) (~ (ret 'thunk)))
+  (! test-equal! (~ (! <<v run3 thk-ex2)) (~ (ret 'true)))
+  (! test-equal! (~ (! <<v run3 '(if true (ret false) (ret true))))
      (~ (ret 'false)))
-  (! test-equal! (~ (! <<v run '(if false (ret false) (ret true))))
+  (! test-equal! (~ (! <<v run3 '(if false (ret false) (ret true))))
      (~ (ret 'true)))
-  (! test-equal! (~ (! run '(bind (ret (thunk (lambda (lambda (app (force (var 1)) (var 0))))))
-                                  (app (app (force (var 0)) (thunk (lambda (ret (var 0))))) true))))
+  (! test-equal! (~ (! run3 '(bind (ret (thunk (lambda (ret (var 0)))))
+                                   (app (force (var 0)) true))))
+     (~ (ret 'true)))
+  (! test-equal! (~ (! run3 '(bind (ret (thunk (lambda (lambda (app (force (var 1)) (var 0))))))
+                                   (app (app (force (var 0)) (thunk (lambda (ret (var 0))))) true))))
      (~ (ret 'true)))
   (ret 'all-db-interp-tests-pass))
 
-
+(define ex-app
+  '(bind (ret (thunk (lambda (lambda (app (force (var 1)) (var 0))))))
+         (app (app (force (var 0)) (thunk (lambda (ret (var 0))))) true)))
+(define ex-app1
+  '(bind (ret (thunk (lambda (ret (var 0)))))
+         (app (force (var 0)) true)))
