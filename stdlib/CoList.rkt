@@ -32,7 +32,6 @@
   (copat [(hd tl) (ret (list 'cons hd tl))]))
 (define cl-cons clv-cons)
 
-
 ;; CBN function:
 ;; U(A -> F B) -> U(CoList A) -> CoList A
 (define-rec-thunk (! cl-map f l)
@@ -216,7 +215,7 @@
               (! cl-last-loop hd tl)]))
 (def-thunk (! cl-last c #:bind)
   [v <- (! c)]
-  (cond [(! clv-nil? v) (error "called cl-last with an empty colist!")]
+  (cond [(! clv-nil? v) (! error "called cl-last with an empty colist!")]
         [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
               (! cl-last-loop hd tl)]))
 

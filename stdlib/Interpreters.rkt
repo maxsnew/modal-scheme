@@ -274,6 +274,16 @@
 (define ex-app
   '(bind (ret (thunk (lambda (lambda (app (force (var 1)) (var 0))))))
          (app (app (force (var 0)) (thunk (lambda (ret (var 0))))) true)))
+
 (define ex-app1
   '(bind (ret (thunk (lambda (ret (var 0)))))
          (app (force (var 0)) true)))
+
+;; Monads and adjunctions
+;;   Error-like effects are given by monads on the *computation* category.
+;;
+;; For instance:
+;;   Err E B = B ⊕ E
+;;
+;; Teletype Char B = (Char -> B) ⊕ (Char ⊘ (Teletype Char B))
+;;   ^^ free monad

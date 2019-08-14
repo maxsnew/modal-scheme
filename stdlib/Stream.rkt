@@ -2,7 +2,7 @@
 
 (require "../stdlib.rkt")
 (require "CoList.rkt")
-(provide cycle stream-ref stream<-list
+(provide cycle stream-ref stream<-list stream<-colist
          stream-cons stream-const push-list
          take)
 
