@@ -22,3 +22,37 @@
   - [X] cond
 * DONE Functions
   - [X] CBV currying composition
+* TODO Nominal Data/CoData
+** Nominal Data Types  
+
+   For minimalism purposes, the best primitive for a new vtype to add
+   are
+   
+   `new-vtype : UF(U(? -> F ?) x U(∀ Y. U(? -> Y) -> UY -> ? -> Y))`
+   
+   which returns a pair of
+   1. An injection function that takes a value and wraps it in the
+      constructor of this type
+   2. A pattern-matching function that takes a continuation for the
+      unwrapped value and an else case and an arg to pattern match on
+      for the newly generated type.
+
+   Similarly, a minimalist primitive for a new ctype is to add
+
+   `new-ctype : UF(U(U¿ -> ¿) x U(U¿ -> U¿ -> ¿))`
+
+   which returns a pair of
+   1. A projection function that takes a thunk and calls it with the
+      new method of this type
+   2. A copattern-matching function that takes a continuation for if
+      the method for this type is at the top of the stack, and another
+      continuation for if the method does not match.
+
+   A more user-friendly version might include an *arity* for the
+   constructor/destructor in each case. The above examples are arity
+   1, and are enough to implement the rest in the presence of x and
+   ->. using dependency:
+
+   new-vtype* : U((n : Nat) -> F(U(? ->^n F ?) x ∀ Y. U(? ->^n Y) -> UY -> ? -> Y))
+
+   new-ctype* : U((n : Nat)-> F(U(U¿ -> ? ->^n ¿) x U(U(? ->^n ¿) -> U¿ -> ¿)))
