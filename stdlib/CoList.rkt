@@ -3,7 +3,7 @@
 (require "../stdlib.rkt")
 (provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons cl-cons
          cl-single
-         colist<-list
+         cl-unfold colist<-list
          cl-map cl-bind cl-bind^ cl-foldr cl-foldr^ cl-filter any?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
@@ -93,13 +93,24 @@
             [#:else (! tl)])]))
        (~ (ret '(nil))))]))
 
-(define-rec-thunk (! colist<-list xs)
-  (cond
-    [(! empty? xs) (ret (list 'nil))]
-    [#:else
-     (do [x <- (! car xs)]
-         [xs <- (! cdr xs)]
-       (ret (list 'cons x (~ (! colist<-list xs)))))]))
+;; U(Seed -> F(U nil (Cons A Seed))) -> Seed -> CoList A
+(def-thunk (! cl-unfold iter seed)
+  [res <- (! iter seed)]
+  (ifc (! clv-nil? res)
+       (! cl-nil)
+       (do [hd <- (! car res)]
+           [seed <- (! cdr res)]
+         (! cl-cons hd (~ (! cl-unfold iter seed))))))
+
+(def-thunk (! colist<-list)
+  [iter = (~ (λ (xs)
+               (cond
+                 [(! empty? xs) (ret clv-nil)]
+                 [#:else
+                  (do [x <- (! car xs)]
+                      [xs <- (! cdr xs)]
+                    (! Cons x xs))])))]
+  (! cl-unfold iter))
 
 (define-thunk (! list<-colist c)
   (! <<v reverse 'o cl-foldl c (~ (! swap Cons)) '() '$))
@@ -216,7 +227,7 @@
               (! cl-last-loop hd tl)]))
 (def-thunk (! cl-last c #:bind)
   [v <- (! c)]
-  (cond [(! clv-nil? v) (error "called cl-last with an empty colist!")]
+  (cond [(! clv-nil? v) (! error "called cl-last with an empty colist!")]
         [else [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
               (! cl-last-loop hd tl)]))
 
@@ -236,3 +247,4 @@
           [(x y)
            (cond [(! <= x y) (ret x)] [#:else (ret y)])]))
         bot)))
+
