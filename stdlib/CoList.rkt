@@ -130,6 +130,7 @@
 
 ;; Num -> Num -> CoList Num
 ;; [lo, hi)
+;; i.e., inclusive of lo, exclusive of hi
 ;; if hi <= lo: empty
 (define-rec-thunk (! range-lo-hi lo hi)
   (cond

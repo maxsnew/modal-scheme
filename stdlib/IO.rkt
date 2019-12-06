@@ -5,7 +5,7 @@
 (provide slurp-lines! slurp-lines~ read-all-chars)
 
 ;; CoList Char
-;; lazily read in stdin as a CoList
+;; lazily read stdin
 (define-rec-thunk (! read-all-chars)
   (do [c <- (! read-char)]
       (cond

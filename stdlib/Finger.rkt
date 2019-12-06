@@ -336,17 +336,6 @@
          [hd <- (! second view)] [tl <- (! third view)]
          (! cl-cons hd (~ (! colist<-fingertree tl)))]))
 
-;; A FlexVec A is a codata type implementing
-;; codata FlexVec A where
-;;   'remove  |- Nat -> F (List A (U FlexVec A))
-;;   'insert  |- Nat -> A -> F (U FlexVec A)
-;;   'get     |- Nat -> A -> F A
-;;   'update  |- Nat -> U(A -> F A) -> F (U FlexVec A)
-;; TODO, we should also implement
-;;   'size    |- F Nat (constant time)
-;; and maybe
-;;   'to-colist |- CoList A
-
 ;; FingerTree (Elt A) -> FlexVec A
 (def-thunk (! flexvec<-fingertree tree)
   (copat

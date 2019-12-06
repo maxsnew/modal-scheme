@@ -416,6 +416,7 @@
          (ret #f)
          (! error 'test-fail "expected ~v, got ~v" x2 x1))))
 
+#;
 (do (! test-equal! (~ (copat [() (ret 0)])) (~ (ret 0)))
     (! test-equal! (~ ((copat [((= 3)) (ret 0)] [() (! abort #f)]) 3))
        (~ (ret 0)))
@@ -469,7 +470,7 @@
                       [(x) (ret x)]) #f))
      (~ (ret #f)))
   ;; (should add/todo) upto tests, more rest tests
-  (ret 'pattern-match-tests-all-pass))
+  (ret 'stdlib-tests-all-pass))
 
 (begin-for-syntax
   (define-syntax-class pat
