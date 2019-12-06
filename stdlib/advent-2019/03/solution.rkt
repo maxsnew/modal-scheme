@@ -86,11 +86,63 @@
      (~ (λ (xy) (! cl-nil)))
      '(0 0)))
 
+(def-thunk (! inside? x lo hi)
+  (! and (~ (! <= lo x))
+         (~ (! <= x hi))))
+
+(def-thunk (! intersect-orthogonal x lo-y hi-y y lo-x hi-x)
+  (cond [(! and (~ (! inside? x lo-x hi-x))
+                (~ (! inside? y lo-y hi-y)))
+         (! <<v List 'o List x y '$)]
+        [else
+         (ret '())]))
+
+(def-thunk (! intersection l1 l2)
+  [or1 <- (! first l1)]
+  [or2 <- (! first l2)]
+  ;; (! displayall 'intersecting l1 l2)
+  ((copat [((= 'Vert) (= 'Vert))
+           ;; TODO: this is wrong but might work
+           (ret '())]
+          [((= 'Hor) (= 'Hor)) (ret '()) ] ;; same here
+          [((= 'Vert) (= 'Hor))
+           [x <- (! second l1)]
+           [lo-y <- (! third l1)]
+           [hi-y <- (! fourth l1)]
+           [lo-x <- (! second l2)]
+           [hi-x <- (! third l2)]
+           [y <- (! fourth l2)]
+           (! intersect-orthogonal x lo-y hi-y y lo-x hi-x)]
+          [((= 'Hor) (= 'Vert))
+           (! intersection l2 l1)])
+   or1 or2))
+
+(def-thunk (! manhattan-to-origin x y)
+  (! idiom (~ (ret +)) (~ (! abs x)) (~ (! abs y))))
+
 (def-thunk (! main-a)
   [wires <- (! parse-input)]
+  (! displayall 'parsed)
   [w1 <- (! first wires)]
   [w2 <- (! second wires)]
-  (! list<-colist (~ (! lines<-directions (~ (! colist<-list w1))))))
+  [lines1 = (~ (! lines<-directions (~ (! colist<-list w1))))]
+  [lines2 = (~ (! lines<-directions (~ (! colist<-list w2))))]
+  [line-pairs = (~ (! cartesian-product lines1 lines2))]
+  [not-both-zero =
+                 (~ (copat [(x y)
+                            (! <<v not 'o and (~ (! zero? x)) (~ (! zero? y)) '$)]))]
+  ;; #;(! list<-colist line-pairs)
+  ;; (! intersect-orthogonal 3 8 5 6 3 7)
+  (! <<n
+   minimum-by (~ (! apply manhattan-to-origin)) '(+inf.0 +inf.0) 'o
+   cl-filter (~ (! apply not-both-zero)) 'o
+   cl-foldr line-pairs
+   (~ (λ (line*line tl)
+        (do [pts <- (! apply intersection line*line)]
+            (! cl-append (~ (! colist<-list pts)) tl))))
+   cl-nil
+   '$
+     ))
 
 (def-thunk (! main-b)
   (ret 'not-done-yet))
