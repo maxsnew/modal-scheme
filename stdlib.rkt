@@ -11,6 +11,7 @@
          and or foldl foldl^ foldr foldr^ map filter ~ @> @>>
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
          <<v <<n oo idiom idiom^
+         CBV CBN
          ;; debugging stuff
          displayall debug
          ;; testing
@@ -645,7 +646,6 @@
 (def-thunk (! foldr l step acc) (! <<v foldl^ (~ (! swap step)) acc 'o reverse l))
 (def-thunk (! foldr^ step acc l) (! foldr l step acc))
 
-
 ;; Debugging primitives
 (def/copat (! displayall)
   [(x) (! displayln x) (! displayall)]
@@ -662,3 +662,24 @@
     [(_ m) #`m]
     [(_ m e es ...)
      #`(bind (x m) (do e es ...))]))
+
+;; example:
+;;   (! CBV f o g $ inp x y)
+;;   =~
+;;   (do [gv <- (! g inp)] (! f gv x y))
+
+;; CBVo[X,Y] = { '$ : X -> Y, 'o : ∀ W. U(W -> F X) -> CBVo[W,Y] }
+;; CBV : ∀ X Y. U(X -> Y) -> CBVo[X,Y]
+(def/copat (! CBV f)
+  [((= '$) x #:bind) (! f x)]
+  [((= 'o) g)
+   (! CBV (~ (! .v f g)))])
+
+;; example:
+;;   (! CBN
+
+;; CBN>>[Y] = { '! : Y, '>> : ∀ Z. U(UY -> Z) -> CBN>>[Z] }
+;; CBN : ∀ Y. UY -> CBN>>[Y]
+(def/copat (! CBN c)
+  [((= '!)) (! c)]
+  [((= '>>) f) (! CBN (~ (! f c)))])

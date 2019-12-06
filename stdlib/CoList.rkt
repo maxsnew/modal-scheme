@@ -32,7 +32,6 @@
   (copat [(hd tl) (ret (list 'cons hd tl))]))
 (define cl-cons clv-cons)
 
-
 ;; CBN function:
 ;; U(A -> F B) -> U(CoList A) -> CoList A
 (define-rec-thunk (! cl-map f l)
