@@ -1,0 +1,83 @@
+init
+start
+()
+dir
+()
+()
+R
+len
+()
+()
+R
+()
+1
+len
+()
+()
+R
+(1)
+0
+len
+()
+()
+R
+(0 1)
+0
+len
+()
+()
+R
+(0 0 1)
+9
+len
+()
+()
+R
+(9 0 0 1)
+comma
+dir
+()
+o
+#<procedure:Cons3>
+len
+()
+o
+#<procedure:Cons3>
+()
+(R 1009)
+len
+()
+o
+#<procedure:Cons3>
+((R 1009))
+()
+len
+()
+o
+#<procedure:Cons3>
+(() (R 1009))
+U
+len
+()
+o
+#<procedure:Cons3>
+(U () (R 1009))
+2
+len
+()
+o
+#<procedure:Cons3>
+(2 U () (R 1009))
+8
+len
+()
+o
+#<procedure:Cons3>
+(8 2 U () (R 1009))
+6
+len
+()
+o
+#<procedure:Cons3>
+(6 8 2 U () (R 1009))
+comma
