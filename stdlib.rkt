@@ -5,7 +5,7 @@
                      (only-in "sbpv/main.rkt" quote)))
 (provide Y do do^ ifc define-rec-thunk define-thunk def-thunk def/copat
          pop1 Cons List .n .v $ swap const abort
-         list first second third fourth empty? rest grab-stack dot-args
+         list first second third fourth fifth sixth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
          copat pm length Ret cond
          and or foldl foldl^ foldr foldr^ map filter ~ @> @>>
@@ -122,6 +122,19 @@
       (! car lst)))
 (define-thunk (! fourth lst)
   (do [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      (! car lst)))
+(define-thunk (! fifth lst)
+  (do [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      (! car lst)))
+(define-thunk (! sixth lst)
+  (do [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
+      [lst <- (! cdr lst)]
       [lst <- (! cdr lst)]
       [lst <- (! cdr lst)]
       (! car lst)))
@@ -640,7 +653,9 @@
             (ret (cons x xs))
             (ret xs)))]))
 
-(def-thunk (! debug x) (! displayln x) (ret x))
+(def/copat (! debug)
+  [(x #:bind) (! displayln x) (ret x)]
+  [(x) (! displayln x) (! debug)])
 
 (def/copat (! oo)
   [(f (upto xs '@)) [g <- (! apply f xs)] (! oo g)]
