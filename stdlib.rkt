@@ -547,7 +547,9 @@
   (copat
    [(th)
     (do [x <- (! th)]
-        (! idiom^ (thunk (! f x))))]))
+        (! idiom^ (thunk (! f x))))]
+   [(#:bind)
+    (! f)]))
 (define-thunk (! idiom) (! idiom^ $))
 
 
@@ -561,6 +563,9 @@
 (define-thunk (! length) (! length-loop 0))
 
 (define-thunk (! Ret x) (ret x))
+;; PERFORMANCE ISSUE?
+;; Traverses the entire list looking for 'o before looking for '$
+;; should probably find '$ first, or optimize or add multiple upto
 (define-rec-thunk (! <<v-impl k)
   (copat
    [(f (upto xs 'o))

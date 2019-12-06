@@ -20,24 +20,6 @@
 
 ;; A Monoid for a type A is a (list (A -> A -> F A) A)
 
-(define-thunk (! minimum-monoid <= bot)
-  (ret (list
-        (thunk
-         (copat
-          [(x y)
-           (cond [(! <= x y) (ret x)] [#:else (ret y)])]))
-        bot)))
-
-;; A Comparater A is a A -> A -> F bool
-
-(define-thunk (! pb f comparator x y)
-  (do [x <- (! f x)] [y <- (! f y)]
-    (! comparator x y)))
-
-(define-thunk (! minimum-by f f*+inf)
-  (do [m <- (! minimum-monoid (thunk (! pb f <=)) f*+inf)]
-   (! monoid-cl-foldl m)))
-
 
 
 (define-thunk (! parse-entry)
