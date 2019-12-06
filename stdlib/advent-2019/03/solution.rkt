@@ -41,8 +41,56 @@
   [cs <- (! <<n list<-colist 'o read-all-chars '$)]
   (! apply parse-chars cs))
 
+;; A Line is one of
+;; (list 'Vert x lo-y hi-y) where x and lo-y <= hi-y are numbers
+;; (list 'Hor  lo-x hi-x y) where lo-x <= hi-x and y are numbers
+
+(def-thunk (! apply-vector start vector)
+  [x <- (! first start)]
+  [y <- (! second start)]
+  [dir <- (! first vector)]
+  [n <- (! second vector)]
+  ((copat [((= #\U))
+           [hi-y <- (! + y n)]
+           [line <- (! List 'Vert x y hi-y)]
+           [new-pt <- (! List x hi-y)]
+           (! List line new-pt)]
+          [((= #\D))
+           [lo-y <- (! - y n)]
+           [line <- (! List 'Vert x lo-y y)]
+           [new-pt <- (! List x lo-y)]
+           (! List line new-pt)]
+          [((= #\L))
+           [lo-x <- (! - x n)]
+           [line <- (! List 'Hor  lo-x x y)]
+           [new-pt <- (! List lo-x y)]
+           (! List line new-pt)]
+          [((= #\R))
+           [hi-x <- (! + x n)]
+           [line <- (! List 'Hor x hi-x y)]
+           [new-pt <- (! List hi-x y)]
+           (! List line new-pt)])
+   dir))
+
+;; U (CoList Direction) -> CoList Lines
+(def-thunk (! lines<-directions dirs)
+  [next-line
+   = (~ (copat
+         [(dir k start)
+          [line*new-pt <- (! apply-vector start dir)]
+          (! apply (~ (copat
+                       [(line new-pt)
+                        (! cl-cons line (~ (! k new-pt)))]))
+             line*new-pt)]))]
+  (! cl-foldr dirs next-line
+     (~ (λ (xy) (! cl-nil)))
+     '(0 0)))
+
 (def-thunk (! main-a)
-  (! parse-input))
+  [wires <- (! parse-input)]
+  [w1 <- (! first wires)]
+  [w2 <- (! second wires)]
+  (! list<-colist (~ (! lines<-directions (~ (! colist<-list w1))))))
 
 (def-thunk (! main-b)
   (ret 'not-done-yet))
