@@ -46,7 +46,7 @@
   [(mem val (= 1)) (ret val)]
   [() (! error "read-inp got an invalid parameter mode")])
 
-(def-thunk (! operation memory iptr outp op args modes)
+(def-thunk (! operation memory iptr inp outp op args modes)
   ((copat
     [((= 1))
      [arg1 <- (! first args)] [arg2 <- (! second args)]
@@ -56,7 +56,7 @@
      [dest <- (! third args)]
      [result <- (! + val1 val2)]
      (! memory 'set dest result)
-     (ret outp)]
+     (! List iptr outp)]
     [((= 2))
      [arg1 <- (! first args)] [arg2 <- (! second args)]
      [mode1 <- (! nth-mode 0 modes)] [mode2 <- (! nth-mode 1 modes)]
@@ -65,17 +65,47 @@
      [dest <- (! third args)]
      [result <- (! * val1 val2)]
      (! memory 'set dest result)
-     (ret outp)]
+     (! List iptr outp)]
     [((= 3))
      [dest <- (! first args)]
-     (! memory 'set dest INPUT)
-     (ret outp)]
+     (! memory 'set dest inp)
+     (! List iptr outp)]
     [((= 4))
      [param <- (! first args)]
      [mode <- (! nth-mode 0 modes)]
      [outp <- (! read-inp memory param mode)]
      (! displayall 'output: outp)
-     (ret outp)])
+     (! List iptr outp)]
+    [((= 5)) ;; jump-not-zero
+     [discrim <- (! idiom (~ (ret read-inp)) (~ (ret memory))
+                    (~ (! first args)) (~ (! nth-mode 0 modes)))]
+     [dest <- (! idiom (~ (ret read-inp)) (~ (ret memory))
+                       (~ (! second args)) (~ (! nth-mode 1 modes)))]     
+     [iptr <- (ifc (! zero? discrim) (ret iptr) (ret dest))]
+     (! List iptr outp)]
+    [((= 6)) ;; jump-if-zero
+     [discrim <- (! idiom (~ (ret read-inp)) (~ (ret memory))
+                    (~ (! first args)) (~ (! nth-mode 0 modes)))]
+     [dest <- (! idiom (~ (ret read-inp)) (~ (ret memory))
+                       (~ (! second args)) (~ (! nth-mode 1 modes)))]
+     [iptr <- (ifc (! zero? discrim) (ret dest) (ret iptr))]
+     (! List iptr outp)]
+    [((= 7)) ;; <
+     [v1 <- (! idiom (~ (ret read-inp)) (~ (ret memory)) (~ (! first args)) (~ (! nth-mode 0 modes)))]
+     [v2 <- (! idiom (~ (ret read-inp)) (~ (ret memory)) (~ (! second args)) (~ (! nth-mode 1 modes)))]
+     [dest <- (! third args)]
+     [result <- (ifc (! < v1 v2) (ret 1) (ret 0))]
+     (! memory 'set dest result)
+     (! List iptr outp)
+     ]
+    [((= 8)) ;; =
+     [v1 <- (! idiom (~ (ret read-inp)) (~ (ret memory)) (~ (! first args)) (~ (! nth-mode 0 modes)))]
+     [v2 <- (! idiom (~ (ret read-inp)) (~ (ret memory)) (~ (! second args)) (~ (! nth-mode 1 modes)))]
+     [dest <- (! third args)]
+     [result <- (ifc (! = v1 v2) (ret 1) (ret 0))]
+     (! memory 'set dest result)
+     (! List iptr outp)
+     ])
    op))
 
 (def/copat (! op->num-params)
@@ -83,10 +113,14 @@
   [((= 2))  (ret 3)]
   [((= 3))  (ret 1)]
   [((= 4))  (ret 1)]
+  (((= 5))  (ret 2))
+  (((= 6))  (ret 2))
+  (((= 7))  (ret 3))
+  (((= 8))  (ret 3))
   [((= 99)) (ret 0)])
 
 (def/copat (! eval-opcodes)
-  [(mem iptr output)
+  [(mem iptr input output)
    [code*modes <- (! <<v parse-opcode 'o mem 'get iptr '$)]
    [code <- (! first code*modes)]
    [modes <- (! rest code*modes)]
@@ -98,8 +132,10 @@
       [iptr <- (! + iptr 1)]
       (! grab-args mem iptr n '()
          (~ (λ (iptr params)
-              (do [output <- (! operation mem iptr output op params modes)]
-                  (! eval-opcodes mem iptr output)))))])
+              (do [iptr*output <- (! operation mem iptr input output op params modes)]
+                  [iptr <- (! first iptr*output)]
+                [output <- (! second iptr*output)]
+                  (! eval-opcodes mem iptr input output)))))])
     code)])
 
 ;; Char ->* F (Listof Number)
@@ -120,12 +156,12 @@
   [chars <- (! <<n list<-colist 'o read-all-chars '$)]
   (! apply (~ (! parse-chars 'loop '() '())) chars))
 
-(def-thunk (! run-opcode-program opcodes)
+(def-thunk (! run-opcode-program opcodes input)
   [memory <- (! mutable-flexvec<-list opcodes)]
-  (! eval-opcodes memory 0 #f))
+  (! eval-opcodes memory 0 input #f))
 
 (def-thunk (! main-a)
-  (! <<v run-opcode-program 'o debug 'parsed 'o parse-opcodes '$))
+  (! <<v swap run-opcode-program 1 'o debug 'parsed 'o parse-opcodes '$))
 
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  (! <<v swap run-opcode-program 5 'o debug 'parsed 'o parse-opcodes '$))
