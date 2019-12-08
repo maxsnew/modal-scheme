@@ -106,7 +106,7 @@
      [param <- (! first args)]
      [mode <- (! nth-mode 0 modes)]
      [outp <- (! read-parameter memory param mode)]
-     (! displayall 'output: outp)
+     ;; (! displayall 'output: outp)
      (! List iptr inp outp)]
     [((= 5)) ;; jump-not-zero
      [discrim <- (! idiom (~ (ret read-parameter)) (~ (ret memory))
@@ -201,7 +201,7 @@
     [((= 3)) ;; input ~> x1
      (! driver 'input
         (~ (λ (inp)
-             (do (! displayall 'input-received: inp)
+             (do ;; (! displayall 'input-received: inp)
                  [dest <- (! first params)]
                  (! mem 'set dest inp)
                (! resumeK iptr)))))]
@@ -209,7 +209,7 @@
      [param <- (! first params)]
      [mode <- (! nth-mode 0 modes)]
      [outp <- (! read-parameter mem param mode)]
-     (! displayall 'output: outp)
+     ;; (! displayall 'output: outp)
      (! driver 'output outp (~ (! resumeK iptr)))]
     [((= 5)) ;; jump-not-zero
      [discrim <- (! idiom (~ (ret read-parameter)) (~ (ret mem))

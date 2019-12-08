@@ -53,5 +53,64 @@
   [combos = (~ (! permutations '(0 1 2 3 4)))]
   (! <<n maximum 'o cl-map (~ (! run-intcode-flow prog 0)) combos '$))
 
+(def/copat (! two-inputs-then-output-then-save-input-req in1 in2 thenK)
+  [((= 'input) inK)
+   (! inK in1
+      (~ (copat
+  [((= 'input) inK)
+   (! inK in2
+      (~ (copat
+  [((= 'output) o resumeK)
+   (! resumeK
+      (~ (copat
+  [((= 'input) inK)
+   (! thenK o inK)])))])))])))])
+
+(def/copat (! feedback-loop)
+  [((= 'init) inp threads)
+   [thread <- (! first threads)] [threads <- (! rest threads)]
+   (! thread inp (~ (copat
+   [((= 'output) o resumeK)
+   (! resumeK (~ (copat
+   [((= 'input) inK)
+    [old-threads <- (! List inK)]
+    (! feedback-loop 'input-loop o old-threads threads)]
+   [((= 'halt))
+    (! feedback-loop 'halt-loop o threads)])))])))]
+  [((= 'input-loop) inp old-threads (= '()))
+   [old-threads <- (! reverse old-threads)]
+   (! feedback-loop 'init inp old-threads)]
+  [((= 'input-loop) inp old-threads threads)
+   [thread <- (! first threads)] [threads <- (! rest threads)]
+   (! thread inp (~ (copat
+   [((= 'output) o resumeK) (! resumeK (~ (copat
+   [((= 'input) inK)
+    [old-threads <- (! Cons inK old-threads)]
+    (! feedback-loop 'input-loop o old-threads threads)])))])))]
+  [((= 'halt-loop) inp (= '())) (ret inp)]
+  [((= 'halt-loop) inp threads)
+   [thread <- (! first threads)] [threads <- (! rest threads)]
+   (! thread inp (~ (copat
+   [((= 'output) o resumeK) (! resumeK (~ (copat
+   [((= 'halt))
+    (! feedback-loop 'halt-loop o threads)])))])))])
+
+(def/copat (! run-intcode-loop syntax threads)
+  [((= '()))
+   [threads <- (! reverse threads)]
+   (! feedback-loop 'init 0 threads)]
+  [(phase-settings)
+   [cur-setting <- (! first phase-settings)] [phase-settings <- (! rest phase-settings)]
+   (! interp-intcode-program syntax (~ (copat
+    [((= 'input) resumeK)
+     (! resumeK cur-setting (~ (copat
+    [((= 'input) thread)
+     [threads <- (! Cons thread threads)]
+     (! run-intcode-loop syntax threads phase-settings)])))])))])
+
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  [prog <- (! parse-intcode-program)]
+  [combos = (~ (! permutations '(5 6 7 8 9)))]
+  (! <<n maximum 'o cl-map (~ (λ (phases)
+                                (do (! displayall 'launching phases)
+                                    (! run-intcode-loop prog '() phases)))) combos '$))
