@@ -44,5 +44,33 @@
   [tbl <- (! <<n cl-foldl^ step empty-table 'o cl-map parse-edge slurp-lines~ '$)]
   (! count-orbits tbl "COM" 0))
 
+;; An Orbiter->Orbitee Map is a
+;;   U (Table Planet Planet)
+
+(def-thunk (! transitive-orbits orbits start so-far)
+  (cond [(! equal? start "COM") (! Cons "COM" so-far)]
+        [else
+         [next <- (! orbits 'get start #f)]
+         (! <<v transitive-orbits orbits next 'o Cons start so-far '$)]))
+
+(def/copat (! remove-common-prefix)
+  [((= '()) ys) (! List '() ys)]
+  [(xs (= '())) (! List xs '())]
+  [(xs ys)
+   [x <- (! first xs)] [xs^ <- (! rest xs)]
+   [y <- (! first ys)] [ys^ <- (! rest ys)]
+   (cond [(! equal? x y) (! remove-common-prefix xs^ ys^)]
+         [else (! List xs ys)])])
+
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  [step = (~ (λ (orbits edge)
+               (do [center <- (! first edge)]
+                   [orbiter <- (! second edge)]
+                 (! orbits 'set orbiter center))))]
+  [tbl <- (! <<n cl-foldl^ step empty-table 'o cl-map parse-edge slurp-lines~ '$)]
+  [san-orbits <- (! transitive-orbits tbl "SAN" '())]
+  [you-orbits <- (! transitive-orbits tbl "YOU" '())]
+  [paths <- (! remove-common-prefix san-orbits you-orbits)]
+  (! idiom (~ (ret (~ (! + -2))))
+     (~ (! <<v length 'o first paths '$))
+     (~ (! <<v length 'o second paths '$))))
