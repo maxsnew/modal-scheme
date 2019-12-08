@@ -9,8 +9,12 @@
 
 (provide main-a main-b)
 
-(def-thunk (! main-a)
-  (! <<v swap run-intcode-program '(1) 'o debug 'parsed 'o parse-intcode-program '$))
+(def-thunk (! run-with-input x)
+  [syntax <- (! parse-intcode-program)]
+  [inps <- (! List x)]
+  [driver = (~ (! static-input-return-last-output inps #f))]
+  (! interp-intcode-program syntax driver))
 
-(def-thunk (! main-b)
-  (! <<v swap run-intcode-program '(5) 'o debug 'parsed 'o parse-intcode-program '$))
+(def-thunk (! main-a) (! run-with-input 1))
+
+(def-thunk (! main-b) (! run-with-input 5))

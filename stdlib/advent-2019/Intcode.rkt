@@ -7,9 +7,20 @@
 (require "../FlexVec.rkt")
 
 (provide parse-intcode-program
-         run-intcode-program)
+         run-intcode-program
 
-;; Char ->* F (Listof Number)
+         ;; new interface
+         interp-intcode-program
+         ;; drivers
+         static-input-return-last-output
+         )
+
+
+;; PARSING
+;
+;; An Intcode-Program is a Listof Number
+
+;; Char ->* F Intcode-Program)
 (def/copat (! parse-chars)
   [((= 'loop) nums digits (= #\newline))
    [num <- (! <<v parse-num 'o reverse digits '$)]
@@ -160,3 +171,103 @@
 (def-thunk (! run-intcode-program opcodes inputs)
   [memory <- (! mutable-flexvec<-list opcodes)]
   (! eval-opcodes memory 0 inputs #f))
+
+;; An Intcode-Driver I:v O:v R:c is a computation supporting
+;;  . 'input  U(I -> U(Intcode-Driver I O R) -> R) -> R
+;;  . 'output O -> U(U(Intcode-Driver I O R) -> R) -> R
+;;  . 'halt   -> R
+
+;; (Listof Number) -> Number -> Intcode-Driver Number Number (F Number)
+;; feeds the list as consecutive inputs
+;; returns the last output when it halts, using the second arg as default
+(def/copat (! static-input-return-last-output)
+  [((= '()) last-output (= 'input)) (! error "ran out of inputs")]
+  [(inps last-output (= 'input) k)
+   [inp1 <- (! first inps)] [inps <- (! rest inps)]
+   (! k inp1 (~ (! static-input-return-last-output inps last-output)))]
+  [(inps last-output (= 'output) new-output k)
+   (! k (~ (! static-input-return-last-output inps new-output)))]
+  [(inps last-output (= 'halt)) (ret last-output)])
+
+(def-thunk (! intcode-operation mem iptr driver op params modes resumeK)
+  ((copat
+    [((= 99)) (! driver 'halt)]
+    [((= 1)) ;; + x1 x2 ~> x3
+     [param1 <- (! first params)] [param2 <- (! second params)]
+     [mode1 <- (! nth-mode 0 modes)] [mode2 <- (! nth-mode 1 modes)]
+     [val1 <- (! read-parameter mem param1 mode1)]
+     [val2 <- (! read-parameter mem param2 mode2)]
+     [dest <- (! third params)]
+     [result <- (! + val1 val2)]
+     (! mem 'set dest result)
+     (! resumeK iptr driver)]
+    [((= 2)) ;; * x1 x2 ~> x3
+     [param1 <- (! first params)] [param2 <- (! second params)]
+     [mode1 <- (! nth-mode 0 modes)] [mode2 <- (! nth-mode 1 modes)]
+     [val1 <- (! read-parameter mem param1 mode1)]
+     [val2 <- (! read-parameter mem param2 mode2)]
+     [dest <- (! third params)]
+     [result <- (! * val1 val2)]
+     (! mem 'set dest result)
+     (! resumeK iptr driver)]
+    [((= 3)) ;; input ~> x1
+     (! driver 'input
+        (~ (λ (inp)
+             (do (! displayall 'input-received: inp)
+                 [dest <- (! first params)]
+                 (! mem 'set dest inp)
+               (! resumeK iptr)))))]
+    [((= 4)) ;; x1 ~> output
+     [param <- (! first params)]
+     [mode <- (! nth-mode 0 modes)]
+     [outp <- (! read-parameter mem param mode)]
+     (! displayall 'output: outp)
+     (! driver 'output outp (~ (! resumeK iptr)))]
+    [((= 5)) ;; jump-not-zero
+     [discrim <- (! idiom (~ (ret read-parameter)) (~ (ret mem))
+                    (~ (! first params)) (~ (! nth-mode 0 modes)))]
+     [dest <- (! idiom (~ (ret read-parameter)) (~ (ret mem))
+                       (~ (! second params)) (~ (! nth-mode 1 modes)))]     
+     [iptr <- (ifc (! zero? discrim) (ret iptr) (ret dest))]
+     (! resumeK iptr driver)]
+    [((= 6)) ;; jump-if-zero
+     [discrim <- (! idiom (~ (ret read-parameter)) (~ (ret mem))
+                    (~ (! first params)) (~ (! nth-mode 0 modes)))]
+     [dest <- (! idiom (~ (ret read-parameter)) (~ (ret mem))
+                       (~ (! second params)) (~ (! nth-mode 1 modes)))]
+     [iptr <- (ifc (! zero? discrim) (ret dest) (ret iptr))]
+     (! resumeK iptr driver)]
+    [((= 7)) ;; <
+     [v1 <- (! idiom (~ (ret read-parameter)) (~ (ret mem)) (~ (! first params)) (~ (! nth-mode 0 modes)))]
+     [v2 <- (! idiom (~ (ret read-parameter)) (~ (ret mem)) (~ (! second params)) (~ (! nth-mode 1 modes)))]
+     [dest <- (! third params)]
+     [result <- (ifc (! < v1 v2) (ret 1) (ret 0))]
+     (! mem 'set dest result)
+     (! resumeK iptr driver)]
+    [((= 8)) ;; =
+     [v1 <- (! idiom (~ (ret read-parameter)) (~ (ret mem)) (~ (! first params)) (~ (! nth-mode 0 modes)))]
+     [v2 <- (! idiom (~ (ret read-parameter)) (~ (ret mem)) (~ (! second params)) (~ (! nth-mode 1 modes)))]
+     [dest <- (! third params)]
+     [result <- (ifc (! = v1 v2) (ret 1) (ret 0))]
+     (! mem 'set dest result)
+     (! resumeK iptr driver)])
+   op))
+
+(def-thunk (! intcode-prog-loop mem iptr driver)
+  [code*modes <- (! <<v parse-opcode 'o mem 'get iptr '$)]
+  [iptr <- (! + iptr 1)]
+  [op <- (! first code*modes)]
+  [modes <- (! rest code*modes)]
+  [n <- (! op->num-params op)]
+  (! grab-args mem iptr n '()
+     (~ (λ (iptr params)
+          (! intcode-operation mem iptr driver op params modes
+             (~ (! intcode-prog-loop mem)))))))
+
+;; A Semantic-Intcode-Prog is a forall R. U(Intcode-Driver I O R) -> R
+
+;; interp-intcode-prog : Intcode-Program -> U(Intcode-Driver Number Number R) -> R
+(def-thunk (! interp-intcode-program prog)
+  [memory <- (! mutable-flexvec<-list prog)]
+  (! intcode-prog-loop memory 0))
+
