@@ -5,6 +5,7 @@
 (require "../../CoList.rkt")
 (require "../../Parse.rkt")
 (require "../../FlexVec.rkt")
+(require "../Intcode.rkt")
 
 (provide main-a main-b)
 
@@ -138,30 +139,12 @@
                   (! eval-opcodes mem iptr input output)))))])
     code)])
 
-;; Char ->* F (Listof Number)
-(def/copat (! parse-chars)
-  [((= 'loop) nums digits (= #\newline))
-   [num <- (! <<v parse-num 'o reverse digits '$)]
-   (! <<v reverse 'o Cons num nums '$)]
-  [((= 'loop) nums digits (= #\,))
-   [num <- (! <<v parse-num 'o reverse digits '$)]
-   [nums <- (! Cons num nums)]
-   (! parse-chars 'loop nums '())]
-  [((= 'loop) nums digits c)
-   [digits <- (! Cons c digits)]
-   (! parse-chars 'loop nums digits)]
-  )
-
-(def-thunk (! parse-opcodes)
-  [chars <- (! <<n list<-colist 'o read-all-chars '$)]
-  (! apply (~ (! parse-chars 'loop '() '())) chars))
-
 (def-thunk (! run-opcode-program opcodes input)
   [memory <- (! mutable-flexvec<-list opcodes)]
   (! eval-opcodes memory 0 input #f))
 
 (def-thunk (! main-a)
-  (! <<v swap run-opcode-program 1 'o debug 'parsed 'o parse-opcodes '$))
+  (! <<v swap run-opcode-program 1 'o debug 'parsed 'o parse-intcode-program '$))
 
 (def-thunk (! main-b)
-  (! <<v swap run-opcode-program 5 'o debug 'parsed 'o parse-opcodes '$))
+  (! <<v swap run-opcode-program 5 'o debug 'parsed 'o parse-intcode-program '$))

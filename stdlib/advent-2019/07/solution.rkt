@@ -4,10 +4,12 @@
 (require "../../IO.rkt")
 (require "../../CoList.rkt")
 (require "../../Parse.rkt")
+(require "../Intcode.rkt")
 
 (provide main-a main-b)
 
 (def-thunk (! main-a)
+  []
   (ret 'not-done-yet))
 
 (def-thunk (! main-b)
