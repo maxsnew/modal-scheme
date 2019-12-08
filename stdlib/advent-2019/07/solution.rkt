@@ -33,13 +33,19 @@
            (do [x <- (! first x*xs)] [xs <- (! second x*xs)]
              (! cl-map (~ (! Cons x)) (~ (! permutations xs)))))))])
 
+(def/copat (! driver-a inps)
+  [((= 'input) k)
+   [input <- (! first inps)] [inps <- (! rest inps)]
+   (! k input (~ (! driver-a inps)))]
+  [((= 'output) o _k) (ret o)])
+
 (def/copat (! run-intcode-flow prog input)
   [((= '()) #:bind) (ret input)]
   [(phase-settings #:bind)
    [cur-setting <- (! first phase-settings)]
    [phase-settings <- (! rest phase-settings)]
    [cur-inputs <- (! List cur-setting input)]
-   [output <- (! run-intcode-program prog cur-inputs)]
+   [output <- (! interp-intcode-program prog (~ (! driver-a cur-inputs)))]
    (! run-intcode-flow prog output phase-settings)])
 
 (def-thunk (! main-a)

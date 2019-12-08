@@ -177,18 +177,6 @@
 ;;  . 'output O -> U(U(Intcode-Driver I O R) -> R) -> R
 ;;  . 'halt   -> R
 
-;; (Listof Number) -> Number -> Intcode-Driver Number Number (F Number)
-;; feeds the list as consecutive inputs
-;; returns the last output when it halts, using the second arg as default
-(def/copat (! static-input-return-last-output)
-  [((= '()) last-output (= 'input)) (! error "ran out of inputs")]
-  [(inps last-output (= 'input) k)
-   [inp1 <- (! first inps)] [inps <- (! rest inps)]
-   (! k inp1 (~ (! static-input-return-last-output inps last-output)))]
-  [(inps last-output (= 'output) new-output k)
-   (! k (~ (! static-input-return-last-output inps new-output)))]
-  [(inps last-output (= 'halt)) (ret last-output)])
-
 (def-thunk (! intcode-operation mem iptr driver op params modes resumeK)
   ((copat
     [((= 99)) (! driver 'halt)]
@@ -270,4 +258,21 @@
 (def-thunk (! interp-intcode-program prog)
   [memory <- (! mutable-flexvec<-list prog)]
   (! intcode-prog-loop memory 0))
+
+
+;; DRIVERS
+
+
+;; (Listof Number) -> Number -> Intcode-Driver Number Number (F Number)
+;; feeds the list as consecutive inputs
+;; returns the last output when it halts, using the second arg as default
+(def/copat (! static-input-return-last-output)
+  [((= '()) last-output (= 'input)) (! error "ran out of inputs")]
+  [(inps last-output (= 'input) k)
+   [inp1 <- (! first inps)] [inps <- (! rest inps)]
+   (! k inp1 (~ (! static-input-return-last-output inps last-output)))]
+  [(inps last-output (= 'output) new-output k)
+   (! k (~ (! static-input-return-last-output inps new-output)))]
+  [(inps last-output (= 'halt)) (ret last-output)])
+
 
