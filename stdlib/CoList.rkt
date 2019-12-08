@@ -13,6 +13,7 @@
          monoid-cl-foldl
          minimum-monoid
          minimum-by
+         maximum
          )
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
@@ -240,14 +241,13 @@
       (! cl-foldl^ * e))]))
 
 ;; A Monoid for a type A is a (list (A -> A -> F A) A)
-
-(define-thunk (! minimum-monoid <= bot)
+(define-thunk (! minimum-monoid <= top)
   (ret (list
         (thunk
          (copat
           [(x y)
            (cond [(! <= x y) (ret x)] [#:else (ret y)])]))
-        bot)))
+        top)))
 
 
 ;; A Comparater A is a A -> A -> F bool
@@ -260,3 +260,7 @@
 (define-thunk (! minimum-by f f*+inf)
   (do [m <- (! minimum-monoid (thunk (! pb f <=)) f*+inf)]
    (! monoid-cl-foldl m)))
+
+(def-thunk (! maximum)
+  [m <- (! minimum-monoid >= -inf.0)]
+  (! monoid-cl-foldl m))

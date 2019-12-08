@@ -125,8 +125,7 @@
      [dest <- (! third args)]
      [result <- (ifc (! = v1 v2) (ret 1) (ret 0))]
      (! memory 'set dest result)
-     (! List iptr inp outp)
-     ])
+     (! List iptr inp outp)])
    op))
 
 (def/copat (! op->num-params)
@@ -157,7 +156,7 @@
                   (! apply (~ (! eval-opcodes mem)) new-state)))))])
     code)])
 
-;; 
+;; Intcode-Program -> (Listof Number) -> F Number
 (def-thunk (! run-intcode-program opcodes inputs)
   [memory <- (! mutable-flexvec<-list opcodes)]
   (! eval-opcodes memory 0 inputs #f))
