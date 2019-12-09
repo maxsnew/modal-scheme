@@ -21,6 +21,7 @@
   (cond [(! < ix len) (ret '())]
         [else
          [ix*2 <- (! * 2 ix)]
+         (! displayall 'allocating-to ix*2)
          [v^ <- (! make-vector ix*2 0)]
          (! <<n cl-foreach (~ (λ (ix)
                                 (do [x <- (! vector-ref v ix)]
