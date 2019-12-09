@@ -7,7 +7,7 @@
          cl-map cl-bind cl-bind^ cl-foldr cl-foldr^ cl-filter any?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
-         range cartesian-product sep-by
+         range cartesian-product sep-by split-at
          cl-zipwith cl-last
 
          monoid-cl-foldl
