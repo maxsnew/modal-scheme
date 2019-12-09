@@ -2,7 +2,7 @@
 
 (require "../stdlib.rkt")
 (require "CoList.rkt")
-(provide mutable-flexvec<-list)
+(provide mutable-flexvec<-list initialize-memory)
 
 ;; A FlexVec A is a codata type implementing
 ;; codata FlexVec A where
@@ -14,6 +14,40 @@
 ;;   'size    |- F Nat (constant time)
 ;; and maybe
 ;;   'to-colist |- CoList A
+
+(def-thunk (! maybe-grow b ix)
+  [v <- (! unbox b)]
+  [len <- (! vector-length v)]
+  (cond [(! < ix len) (ret '())]
+        [else
+         [ix*2 <- (! * 2 ix)]
+         [v^ <- (! make-vector ix*2 0)]
+         (! <<n cl-foreach (~ (λ (ix)
+                                (do [x <- (! vector-ref v ix)]
+                                    (! vector-set! v^ ix x)))) 'o
+            range 0 len '$)
+         (! set-box! b v^)]))
+
+(def/copat (! memory b)
+  [((= 'get) ix #:bind)
+   (! maybe-grow b ix )
+   (! <<v swap vector-ref ix 'o unbox b '$)]
+
+  [((= 'set) ix a #:bind)
+   (! maybe-grow b ix)
+   [v <- (! unbox b)]
+   [old <- (! vector-ref v ix)]
+   (! vector-set! v ix a)
+   (ret old)]
+
+  [((= 'debug) #:bind)
+   [v <- (! unbox b)]
+   [len <- (! vector-length v)]
+   (! <<n cl-map (~ (! vector-ref v)) 'o range 0 len)])
+
+(def-thunk (! initialize-memory l #:bind)
+  [b <- (! <<v box 'o list->vector l '$)]
+  (ret (~ (! memory b))))
 
 (def-thunk (! mutable-flexvec v)
   (copat
