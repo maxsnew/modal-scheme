@@ -30,13 +30,6 @@
   (! cl-foldl xs step '(0 0 0)))
 (def-thunk (! summarize! xs) (! summarize (~ (! colist<-list xs))))
 
-
-(def-thunk (! chunks size l)
-  [front*back <- (! split-at size l)]
-  [front <- (! first front*back)] [back <- (! second front*back)]
-  (cond [(! empty? front) (! cl-nil)]
-        [else (! cl-cons front (~ (! chunks size back)))]))
-
 (def-thunk (! main-a)
   [nums <- (! slurp-input)]
   [layer-size <- (! * WIDTH HEIGHT)]

@@ -4,6 +4,7 @@
 (require "../../IO.rkt")
 (require "../../CoList.rkt")
 (require "../../Parse.rkt")
+(require "../Coordinates.rkt")
 
 (provide main-a main-b)
 
@@ -13,17 +14,6 @@
 ;; 2. the starmap, a function (n <= width) x (m <= height) -> Bool
 
 ;; A coordinate n m is a List {<= n} {<= m}
-
-(def/copat (! mk-coord) [(x y #:bind) (! List x y)])
-(def/copat (! x-coord) [(c #:bind) (! first c)])
-(def/copat (! y-coord) [(c #:bind) (! second c)])
-(def/copat (! scale pt n)
-  [(#:bind)
-   (! idiom (~ (ret mk-coord)) (~ (! <<v * n 'o x-coord pt '$))
-                               (~ (! <<v * n 'o y-coord pt '$)))])
-(def-thunk (! coord-add c1 c2)
-  (! idiom^ mk-coord (~ (! idiom^ + (~ (! x-coord c1)) (~ (! x-coord c2))))
-                     (~ (! idiom^ + (~ (! y-coord c1)) (~ (! y-coord c2))))))
 
 (def-thunk (! change-of-origin new-origin c)
   (! idiom^ (~ (! coord-add c)) (~ (! scale new-origin -1))))

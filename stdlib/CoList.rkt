@@ -7,7 +7,7 @@
          cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter any?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
-         range cartesian-product sep-by split-at
+         range cartesian-product sep-by split-at chunks
          cl-zipwith cl-last
 
          monoid-cl-foldl
@@ -296,3 +296,11 @@
 ;; cycle
 (def-thunk (! cycle cl)
   (! cl-append cl (~ (! cycle cl))))
+
+;; chunks : Nat -> U(CoList A) -> CoList (Listof A)
+(def-thunk (! chunks size l)
+  [front*back <- (! split-at size l)]
+  [front <- (! first front*back)] [back <- (! second front*back)]
+  (cond [(! empty? front) (! cl-nil)]
+        [else (! cl-cons front (~ (! chunks size back)))]))
+
