@@ -4,7 +4,7 @@
 (provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons cl-cons
          cl-single
          cl-unfold colist<-list
-         cl-map cl-bind cl-bind^ cl-foldr cl-foldr^ cl-filter any?
+         cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter any?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
          range cartesian-product sep-by split-at
@@ -165,6 +165,8 @@
 
 (def-thunk (! cl-bind^) (! swap cl-bind))
 
+;; cl-join : U (CoList (U (CoList A))) -> CoList A
+(def-thunk (! cl-join cl-of-cl) (! cl-bind cl-of-cl $))
 
 ;; cartesian-product : CoList A -> CoList B -> CoList (List A B)
 (define-thunk (! cartesian-product)

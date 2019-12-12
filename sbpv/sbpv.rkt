@@ -60,6 +60,7 @@
 (require-fo-wrapped-provide racket/base modulo)
 (require-fo-wrapped-provide racket/base quotient)
 (require-fo-wrapped-provide racket/base /)
+(require-fo-wrapped-provide racket/base gcd)
 (require-fo-wrapped-provide racket zero?)
 (require-fo-wrapped-provide racket/base -)
 (require-fo-wrapped-provide racket/base <)
@@ -102,6 +103,9 @@
 (require-fo-wrapped-provide racket/base hash-has-key?)
 (require-fo-wrapped-provide racket/base hash-count)
 (require-fo-wrapped-provide racket/base hash->list)
+(require-fo-wrapped-provide racket list->set)
+(require-fo-wrapped-provide racket set->list)
+
 ;; mutable vector stuff
 (require-fo-wrapped-provide racket/base make-vector)
 (require-fo-wrapped-provide racket/base vector?)

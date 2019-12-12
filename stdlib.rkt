@@ -7,7 +7,7 @@
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth fifth sixth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
-         copat pm length Ret cond
+         copat pm length Ret Thunk cond
          and or foldl foldl^ foldr foldr^ map filter ~ @> @>>
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
          <<v <<n oo idiom idiom^
@@ -576,6 +576,9 @@
 (define-thunk (! length) (! length-loop 0))
 
 (define-thunk (! Ret x) (ret x))
+
+(define-thunk (! Thunk x) (ret (~ (ret x))))
+
 ;; PERFORMANCE ISSUE?
 ;; Traverses the entire list looking for 'o before looking for '$
 ;; should probably find '$ first, or optimize or add multiple upto
