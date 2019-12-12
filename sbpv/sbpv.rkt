@@ -105,6 +105,13 @@
 (require-fo-wrapped-provide racket/base hash->list)
 (require-fo-wrapped-provide racket list->set)
 (require-fo-wrapped-provide racket set->list)
+(require-fo-wrapped-provide racket make-polar)
+(require-fo-wrapped-provide racket make-rectangular)
+(require-fo-wrapped-provide racket real-part)
+(require-fo-wrapped-provide racket imag-part)
+(require-fo-wrapped-provide racket angle)
+
+
 
 ;; mutable vector stuff
 (require-fo-wrapped-provide racket/base make-vector)
@@ -115,6 +122,7 @@
 (require-fo-wrapped-provide racket/base vector-fill!)
 (require-fo-wrapped-provide racket/base list->vector)
 (require-wrapped-provide racket/base sort)
+(require-wrapped-provide racket pi)
 
 ;; Values
 ;;

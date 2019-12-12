@@ -14,6 +14,9 @@
          minimum-monoid
          minimum-by
          maximum
+
+         take-while
+         cycle
          )
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
@@ -280,3 +283,16 @@
           [front <- (! first split-at-n-1)] [back <- (! second split-at-n-1)]
           [front <- (! Cons hd front)]
           (! List front back)])])
+
+(def-thunk (! take-while p? cl)
+  [v <- (! cl)]
+  (cond [(! clv-nil? v) (! cl-nil)]
+        [else
+         [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+         (cond [(! p? hd)
+                (! cl-cons hd (~ (! take-while p? tl)))]
+               [else (! cl-nil)])]))
+
+;; cycle
+(def-thunk (! cycle cl)
+  (! cl-append cl (~ (! cycle cl))))

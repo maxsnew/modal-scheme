@@ -48,6 +48,7 @@
 ;; 'width : F Nat
 ;; 'height : F Nat
 ;; 'asteroid? : Coordinate n m -> F Bool
+;; 'vaporize! : Coordinate n m -> F 1
 
 (def-thunk (! pt<-ix w h ix)
   (! idiom^ mk-coord (~ (! modulo ix w)) (~ (! quotient ix w))))
@@ -62,7 +63,17 @@
   [((= 'width)) (ret width)]
   [((= 'height)) (ret height)]
   [((= 'asteroid?) pt)
-   (! <<v vector-ref v 'o ix<-pt width height pt '$)])
+   (! <<v vector-ref v 'o ix<-pt width height pt '$)]
+  [((= 'vaporize!) pt)
+   [ix <- (! ix<-pt width height pt)]
+   (! vector-set! v ix #f)])
+
+(def-thunk (! in-bounds? smap pt)
+  (! and
+     (~ (! idiom^ <  (~ (! x-coord pt)) (~ (! smap 'width))))
+     (~ (! idiom^ >= (~ (! x-coord pt)) (~ (ret 0))))
+     (~ (! idiom^ <  (~ (! y-coord pt)) (~ (! smap 'height))))
+     (~ (! idiom^ >= (~ (! y-coord pt)) (~ (ret 0))))))
 
 ;; F (Starmap)
 (def-thunk (! slurp-map)
@@ -113,9 +124,31 @@
 (def-thunk (! main-a)
   [smap <- (! slurp-map)]
   (! <<n
-     maximum 'o
-     cl-map (~ (! all-seen smap)) 'o
+     minimum-by (~ (! <<v * -1 'o second)) '(0 -inf.0) 'o
+     cl-map (~ (λ (pt) (! <<v List pt 'o all-seen smap pt '$))) 'o
      all-asteroids smap '$))
+
+(def-thunk (! safe-/ x y)
+  (cond [(! zero? y) (! * x +inf.0)]
+        [else (! / x y)]))
+
+;; pre-cond not both = 0
+
+;; return an angle from 0 to 2pi
+(def-thunk (! better-angle z)
+  [bad-angle <- (! angle z)]
+  (cond [(! < bad-angle 0) (! idiom^ + (~ (! * 2 pi)) (~ (ret bad-angle)))]
+        [else (ret bad-angle)]))
+;; polar coordinates as fraction of the way around a circle of unit circumference
+;; 0 is at x = 0, y = -max
+
+(def-thunk (! anglify x y)
+  [complex <- (! idiom^ (~ (! + x)) (~ (! * y 0+1i)))]
+  [rotated <- (! * complex 0+1i)]
+  (! better-angle rotated))
+
+(def-thunk (! angle-< c1 c2)
+  (! idiom^ < (~ (! apply anglify c1)) (~ (! apply anglify c2))))
 
 (def-thunk (! all-angles smap pt)
   [angles-with-dups <- (! <<n
@@ -125,8 +158,46 @@
                           cl-filter (~ (! <<v not 'o equal? pt)) 'o
                           all-asteroids smap '$)]
   [angles-unsorted <- (! <<v set->list 'o list->set angles-with-dups '$)]
-  (ret angles-unsorted))
+  (! sort angles-unsorted angle-<))
 
+(def-thunk (! attempt-to-vaporize smap pt k)
+  (cond [(! smap 'asteroid? pt)
+         (! smap 'vaporize! pt)
+         (ret pt)]
+        [else (! k)]))
+
+;; vaporize-one : Starmap -> Coordinate -> Unit-Coordinate -> F(Union #f Coordinate)
+(def-thunk (! vaporize-one smap src angle)
+  (! <<n
+     cl-foldr^ (~ (! attempt-to-vaporize smap)) (~ (ret #f)) 'o
+   take-while (~ (! in-bounds? smap)) 'o
+   cl-map (~ (! unchange-of-origin src)) 'o
+   cl-map (~ (! scale angle)) 'o
+   range 1 +inf.0 '$)
+  )
+
+;; vaporize-loop : Starmap -> Coordinate -> U(CoList Coordinate) -> CoList Coordinate
+(def-thunk (! vaporize-loop smap src targets)
+  [vaporize-step
+   = (~ (λ (tgt later-vaporized)
+          (do 
+              [may-coord <- (! vaporize-one smap src tgt)]
+              (if may-coord
+                  (! cl-cons may-coord later-vaporized)
+                  (! later-vaporized)))))]
+  (! cl-foldr targets vaporize-step cl-nil))
+
+;; sample-b start is 8 3
+;; sample-4 start is 11 13
+;; part a answer  is 8 16
 (def-thunk (! main-b)
   [smap <- (! slurp-map)]
-  (! idiom^ (~(! all-angles smap)) (~ (! mk-coord 1 2))))
+  [src <- (! mk-coord 8 16)]
+  [angle-list <- (! all-angles smap src)]
+  [vaporized-asteroids = (~ (! <<n vaporize-loop smap src 'o cycle (~ (! colist<-list angle-list)) '$))]
+  (! <<n cl-foreach displayall 'o cl-zipwith vaporized-asteroids 'o range 1 201 '$))
+
+;; cartesian x y to polar is
+;; theta = tan^-1(y / x)
+;; so comparing angle(x y) <= angle(x' y') is the same as
+;;   y/x <= y'/x' 
