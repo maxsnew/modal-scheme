@@ -300,6 +300,7 @@
    (cond [(! clv-nil? spine) (! List '() cl-nil)]
          [else
           [hd <- (! clv-hd spine)] [tl <- (! clv-tl spine)]
+          [n-1 <- (! - n 1)]
           [split-at-n-1 <- (! split-at n-1 tl)]
           [front <- (! first split-at-n-1)] [back <- (! second split-at-n-1)]
           [front <- (! Cons hd front)]
