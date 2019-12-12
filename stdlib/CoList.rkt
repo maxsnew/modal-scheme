@@ -37,40 +37,6 @@
   (copat [(hd tl) (ret (list 'cons hd tl))]))
 (define cl-cons clv-cons)
 
-;; CBN function:
-;; U(A -> F B) -> U(CoList A) -> CoList A
-(define-rec-thunk (! cl-map f l)
-  (do [vert <- (! l)]
-      (cond
-        [(! clv-nil? vert) (ret '(nil))]
-        [#:else
-         (do [hd <- (! clv-hd vert)]
-             [tl <- (! clv-tl vert)]
-           [hd^ <- (! f hd)]
-           (ret (list 'cons hd^ (~ (! cl-map f tl)))))])))
-
-;; cl-foldl : U(CoList A) -> (Acc -> A -> F Acc) -> Acc -> F Acc
-(define-rec-thunk (! cl-foldl l step acc)
-  (do [vert <- (! l)]
-      (cond
-        [(! clv-nil? vert) (ret acc)]
-        [#:else
-         (do [hd <- (! clv-hd vert)]
-             [tl <- (! clv-tl vert)]
-           [acc <- (! step acc hd)]
-           (! cl-foldl tl step acc))])))
-
-(define-thunk (! cl-foldl^ )
-  (copat [(step acc l) (! cl-foldl l step acc)]))
-
-(def-thunk (! cl-foldl1 step l)
-  [v <- (! l)]  [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
-  (! cl-foldl tl step hd))
-
-
-(define-thunk (! cl-length)
-  (copat [(l) (! cl-foldl l (~ (copat [(acc x) (! + 1 acc)])) 0)]))
-
 ;; foldr : U (CoList A) -> (A -> U B -> B) -> UB -> B
 (define-rec-thunk (! cl-foldr)
   (copat
@@ -84,18 +50,6 @@
              (! cons hd (~ (! cl-foldr tl cons nil))))]))]))
 (def-thunk (! cl-foldr^ cons nil l) (! cl-foldr l cons nil))
 
-(define-rec-thunk (! cl-filter)
-  (copat
-   [(p? l)
-    (! cl-foldr
-       l
-       (~
-        (copat
-         [(x tl)
-          (cond
-            [(! p? x) (! clv-cons x tl)]
-            [#:else (! tl)])]))
-       (~ (ret '(nil))))]))
 
 ;; U(Seed -> F(U nil (Cons A Seed))) -> Seed -> CoList A
 (def-thunk (! cl-unfold iter seed)
@@ -116,8 +70,82 @@
                     (! Cons x xs))])))]
   (! cl-unfold iter))
 
+
+
+(def-thunk (! cl-zip-cons c1 c2)
+  [v1 <- (! c1)] [v2 <- (! c2)]
+  (cond
+    [(! or (~ (! clv-nil? v1))
+           (~ (! clv-nil? v2)))
+     (ret clv-nil)]
+    [else
+     [h1 <- (! clv-hd v1)] [h2 <- (! clv-hd v2)]
+     [t1 <- (! clv-tl v1)] [t2 <- (! clv-tl v2)]
+     (! clv-cons (cons h1 h2) (~ (! cl-zip-cons t1 t2)))]))
+
+(def-thunk (! repeat x)
+  (! cl-cons x (~ (! repeat x))))
+
+;; zip-with : U(CoList A) -> ... -> CoList (List A ...)
+(def/copat (! cl-zipwith)
+  [((rest ls))
+   (! cl-foldr (~ (! colist<-list ls))
+      cl-zip-cons
+      (~ (! repeat '())))])
+
+;; CBN function:
+;; U(A -> F B) -> U(CoList A) -> CoList A
+(define-rec-thunk (! cl-map-one f l)
+  (do [vert <- (! l)]
+      (cond
+        [(! clv-nil? vert) (ret '(nil))]
+        [#:else
+         (do [hd <- (! clv-hd vert)]
+             [tl <- (! clv-tl vert)]
+           [hd^ <- (! f hd)]
+           (ret (list 'cons hd^ (~ (! cl-map-one f tl)))))])))
+
+(def-thunk (! cl-map f (rest args))
+  (! cl-map-one (~ (! apply f)) (~ (! apply cl-zipwith args))))
+
+
+;; cl-foldl : U(CoList A) -> (Acc -> A -> F Acc) -> Acc -> F Acc
+(define-rec-thunk (! cl-foldl l step acc)
+  (do [vert <- (! l)]
+      (cond
+        [(! clv-nil? vert) (ret acc)]
+        [#:else
+         (do [hd <- (! clv-hd vert)]
+             [tl <- (! clv-tl vert)]
+           [acc <- (! step acc hd)]
+           (! cl-foldl tl step acc))])))
+
+(define-thunk (! cl-foldl^ )
+  (copat [(step acc l) (! cl-foldl l step acc)]))
+
 (define-thunk (! list<-colist c)
   (! <<v reverse 'o cl-foldl c (~ (! swap Cons)) '() '$))
+
+(def-thunk (! cl-foldl1 step l)
+  [v <- (! l)]  [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
+  (! cl-foldl tl step hd))
+
+
+(define-thunk (! cl-length)
+  (copat [(l) (! cl-foldl l (~ (copat [(acc x) (! + 1 acc)])) 0)]))
+
+(define-rec-thunk (! cl-filter)
+  (copat
+   [(p? l)
+    (! cl-foldr
+       l
+       (~
+        (copat
+         [(x tl)
+          (cond
+            [(! p? x) (! clv-cons x tl)]
+            [#:else (! tl)])]))
+       (~ (ret '(nil))))]))
 
 ;; cl-foreach : (A -> F 1) -> U CoList A -> F 1
 (define-thunk (! cl-foreach)
@@ -158,6 +186,11 @@
   [(#:bind) (ret clv-nil)]
   [(l) (! <<n cl-append l 'o cl-append*)])
 
+;; cycle
+(def-thunk (! cycle cl)
+  (! cl-append cl (~ (! cycle cl))))
+
+
 ;; cl-bind : CoList A -> (A -> CoList A') -> CoList A'
 (def-thunk (! cl-bind l k)
   (! cl-foldr
@@ -194,17 +227,6 @@
 
 (define-thunk (! any?)
   (copat [(c) (! cl-foldr c or (~ (ret #f)))]))
-
-(def-thunk (! cl-zipwith c1 c2)
-  [v1 <- (! c1)] [v2 <- (! c2)]
-  (cond
-    [(! or (~ (! clv-nil? v1))
-           (~ (! clv-nil? v2)))
-     (ret clv-nil)]
-    [else
-     [h1 <- (! clv-hd v1)] [h2 <- (! clv-hd v2)]
-     [t1 <- (! clv-tl v1)] [t2 <- (! clv-tl v2)]
-     (! clv-cons (list h1 h2) (~ (! cl-zipwith t1 t2)))]))
 
 (def-thunk (! ex) (! range 0 10))
 (def-thunk (! z-ex) (! cl-zipwith ex ex))
@@ -270,7 +292,7 @@
   [m <- (! minimum-monoid >= -inf.0)]
   (! monoid-cl-foldl m))
 
-;; U(CoList A) -> Nat -> F(List (Listof A) (U(CoList A)))
+;; Nat -> U(CoList A) -> F(List (Listof A) (U(CoList A)))
 (def/copat (! split-at)
   [((= 0) l) (! List '() l)]
   [(n     l)
@@ -278,7 +300,6 @@
    (cond [(! clv-nil? spine) (! List '() cl-nil)]
          [else
           [hd <- (! clv-hd spine)] [tl <- (! clv-tl spine)]
-          [n-1 <- (! - n 1)]
           [split-at-n-1 <- (! split-at n-1 tl)]
           [front <- (! first split-at-n-1)] [back <- (! second split-at-n-1)]
           [front <- (! Cons hd front)]
@@ -293,14 +314,11 @@
                 (! cl-cons hd (~ (! take-while p? tl)))]
                [else (! cl-nil)])]))
 
-;; cycle
-(def-thunk (! cycle cl)
-  (! cl-append cl (~ (! cycle cl))))
-
 ;; chunks : Nat -> U(CoList A) -> CoList (Listof A)
 (def-thunk (! chunks size l)
   [front*back <- (! split-at size l)]
   [front <- (! first front*back)] [back <- (! second front*back)]
   (cond [(! empty? front) (! cl-nil)]
         [else (! cl-cons front (~ (! chunks size back)))]))
+
 
