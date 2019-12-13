@@ -61,6 +61,7 @@
 (require-fo-wrapped-provide racket/base quotient)
 (require-fo-wrapped-provide racket/base /)
 (require-fo-wrapped-provide racket/base gcd)
+(require-fo-wrapped-provide racket/base lcm)
 (require-fo-wrapped-provide racket zero?)
 (require-fo-wrapped-provide racket/base -)
 (require-fo-wrapped-provide racket/base <)

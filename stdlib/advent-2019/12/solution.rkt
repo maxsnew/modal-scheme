@@ -4,6 +4,7 @@
 (require "../../IO.rkt")
 (require "../../CoList.rkt")
 (require "../../Parse.rkt")
+(require "../../Set.rkt")
 
 (provide main-a main-b)
 
@@ -63,7 +64,7 @@
   )
 
 (def-thunk (! simulate-system state)
-  [step = (~(λ (state) (do [new-state <- (! evolve state)] (! Cons new-state new-state))))]
+  [step = (~(λ (state) (do [new-state <- (! evolve state)] (! Cons state new-state))))]
   (! cl-unfold step state))
 
 (define sample-0
@@ -90,14 +91,48 @@
      colist<-list system))
 
 (def-thunk (! energies-of-system system)
-  (! cl-zipwith
-     (~ (! range 1 1001))
-     (~ (! <<n
-           cl-map sys-energy 'o
-           simulate-system system '$))))
+  (! <<n
+     cl-map sys-energy 'o
+     simulate-system system '$))
 
 (def-thunk (! main-a)
-  (! cl-foreach displayall (~ (! energies-of-system input))))
+  (! <<n cl-foreach displayall 'o
+     cl-zipwith
+     (~ (! range 0 1001))
+     (~ (! energies-of-system input)) '$))
+
+(def-thunk (! find-repeat extract xs)
+  [step
+   = (~ (λ (x k seen)
+          (do [y <- (! extract x)]
+              (cond [(! seen 'member? y)
+                     (ret x)]
+                    [else
+                     [seen <- (! seen 'add y)]
+                     (! k seen)]))
+          ))]
+  (! cl-foldr xs step (~ (λ (set) (ret #f)))
+     empty-set))
+
+(def-thunk (! sub-input extract system)
+  [l-of-extract = (~ (! .v List extract))]
+  (! map (~ (! map l-of-extract)) system))
+
+(def-thunk (! numbered xs)
+  (! cl-zipwith (~ (! range 0 +inf.0)) xs))
 
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  [x-sys <- (! sub-input first input)]
+  [y-sys <- (! sub-input second input)]
+  [z-sys <- (! sub-input third input)]
+  [x-rep <- 186028 ;; computed already
+         ;(! <<n find-repeat second 'o numbered 'o simulate-system x-sys '$)
+         ]
+  (! displayall x-rep)
+  [y-rep <- 56344
+         ; (! <<n find-repeat second 'o numbered 'o simulate-system y-sys '$)
+         ]
+  (! displayall y-rep)
+  [z-rep <- (! <<n find-repeat second 'o numbered 'o simulate-system z-sys '$)]
+  (! displayall z-rep)
+  (! idiom^ lcm (~ (! first x-rep)) (~ (! first y-rep))(~ (! first z-rep))))
