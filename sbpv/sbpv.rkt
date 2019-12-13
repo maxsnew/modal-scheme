@@ -80,10 +80,15 @@
 (require-fo-wrapped-provide racket/base symbol?)
 (require-fo-wrapped-provide racket/base string<=?)
 (require-fo-wrapped-provide racket/base string-append)
+
+;; IO
+(require-fo-wrapped-provide racket open-input-file)
+(require-fo-wrapped-provide racket close-input-port)
 (require-fo-wrapped-provide racket/base read-line)
 (require-fo-wrapped-provide racket/base read-char)
 (require-fo-wrapped-provide racket/base displayln)
 (require-fo-wrapped-provide racket/base display)
+
 (require-fo-wrapped-provide racket/base number->string)
 (require-fo-wrapped-provide racket/base string->list)
 (require-fo-wrapped-provide racket/base list->string)

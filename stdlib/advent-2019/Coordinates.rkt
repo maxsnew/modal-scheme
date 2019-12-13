@@ -5,7 +5,8 @@
 (provide mk-coord x-coord y-coord scale coord-add
          pt<-ix ix<-pt
 
-         mk-square-canvas)
+         mk-square-canvas
+         mk-canvas)
 
 (def/copat (! mk-coord) [(x y #:bind) (! List x y)])
 (def/copat (! x-coord) [(c #:bind) (! first c)])
@@ -35,7 +36,7 @@
    (! vector-set! v ix x)]
   [((= 'paint) char<-elt) ;; CoList String
    [len <- (! * w h)]
-   (! displayall 'time-to-paint)
+   ;; (! displayall 'time-to-paint)
    (! <<n
       cl-map list->string 'o
       chunks w 'o
@@ -48,3 +49,8 @@
    [len <- (! * side side)]
    [vec <- (! make-vector len val)]
    (ret (~ (! canvas<-vec side side vec)))])
+
+(def-thunk (! mk-canvas w h val)
+  [len <- (! * w h)]
+  [vec <- (! make-vector len val)]
+  (ret (~ (! canvas<-vec w h vec))))

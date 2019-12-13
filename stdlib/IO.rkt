@@ -6,18 +6,40 @@
 
 ;; CoList Char
 ;; lazily read stdin
-(define-rec-thunk (! read-all-chars)
-  (do [c <- (! read-char)]
+(define-rec-thunk (! read-all-chars-port p)
+  (do [c <- (! read-char p)]
       (cond
-        [(! eof-object? c) (ret '(nil))]
-        [#:else (ret (list 'cons c (thunk (! read-all-chars))))])))
+        [(! eof-object? c)
+         (! close-input-port p)
+         (ret '(nil))]
+        [#:else (ret (list 'cons c (thunk (! read-all-chars-port p))))])))
+
+(def/copat (! read-all-chars)
+  [(#:bind)
+   [p <- (! open-input-file "/dev/stdin")]
+   (! read-all-chars-port p)]
+  [(name #:bind)
+   [p <- (! open-input-file name)]
+   (! read-all-chars-port p)])
 
 ;; CoList String
+(def-thunk (! slurp-lines-port~ p)
+  (do [l <- (! read-line p)]
+      (cond [(! eof-object? l)
+             (! close-input-port p)
+             (! cl-nil)]
+            [else (! cl-cons l (~ (! slurp-lines-port~)))])))
+
 (def-thunk (! slurp-lines~)
-  (do [l <- (! read-line)]
-      (cond [(! eof-object? l) (! cl-nil)]
-            [else (! cl-cons l (~ (! slurp-lines~)))])))
+  [slurp-file
+   = (~ (λ (name)
+          (do [p <- (! open-input-file name)]
+              (! slurp-lines-port~ p))))]
+  (copat
+   [(#:bind) (! slurp-file "/dev/stdin")]
+   [(name #:bind) (! slurp-file name)]))
+
 
 ;; F List String
-(def-thunk (! slurp-lines!)
-  (! list<-colist slurp-lines~))
+(def-thunk (! slurp-lines! (rest args))
+  (! list<-colist (~ (! apply slurp-lines~ args))))

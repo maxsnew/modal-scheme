@@ -33,8 +33,8 @@
    (! parse-chars 'loop nums digits)])
 
 ;; Parses Intcode program 
-(def-thunk (! parse-intcode-program)
-  [chars <- (! <<n list<-colist 'o read-all-chars '$)]
+(def-thunk (! parse-intcode-program (rest args))
+  [chars <- (! <<n list<-colist 'o apply read-all-chars args '$)]
   (! apply (~ (! parse-chars 'loop '() '())) chars))
 
 
@@ -200,5 +200,3 @@
   [(inps last-output (= 'output) new-output k)
    (! k (~ (! static-input-return-last-output inps new-output)))]
   [(inps last-output (= 'halt)) (ret last-output)])
-
-
