@@ -62,34 +62,46 @@
 (def-thunk (! mv-pos posn dir)
   (! <<v coord-add posn 'o coord<-arrow dir))
 
-(def-thunk (! trace-inputs pos came_from dirs)
+(def-thunk (! trace-inputs key pos came_from dirs)
   ;; (! <<v displayall 'trace-inputs pos)
   ;; (! <<v displayall 'o came_from 'to-list)
   [next-dir <- (! came_from 'get pos #f)]
   (cond [(ret next-dir)
          [pos <- (! <<v mv-pos pos 'o reverse-dir next-dir)]
-         (! trace-inputs pos came_from (cons next-dir dirs))]
-        [else (ret dirs)]))
+         (! trace-inputs key pos came_from (cons next-dir dirs))]
+        [else (! List key dirs)]))
+
+(def/copat (! known-empty-space?)
+  [((= #\.)) (ret #t)]
+  [((= #\O)) (ret #t)]
+  [((= #\D)) (ret #t)]
+  [(arg) (ret #f)])
 
 ;; c : canvas
 ;; ptr: Posn
 ;; came_from : Table Posn Posn
 ;; frontier : Queue Posn
 ;; Returns a Listof Dir
-(def-thunk (! bfs-loop c came_from frontier)
+(def-thunk (! bfs-loop c goal came_from frontier)
   (cond [(! empty? frontier)
-         (! error 'no-frontier)]
+         (! displayall 'no-frontier goal)
+         (! <<v displayall 'came_from 'o came_from 'to-list)
+         (! error "empty frontier")]
         [else
          [rev_front <- (! reverse frontier)]
          [next <- (! first rev_front)] [frontier <- (! <<v reverse 'o rest rev_front '$)]
          [adjs = '(1 2 3 4)]
+         [goals <- (! filter (~ (! <<v equal? goal 'o mv-pos next)) adjs)]
          [unknowns <- (! filter (~ (! <<v equal? #\space 'o c 'read 'o mv-pos next)) adjs)]
          [knowns <- (! <<v
                        filter (~ (! <<v not 'o came_from 'has-key? 'o mv-pos next)) 'o
-                       filter (~ (! <<v equal? #\. 'o c 'read 'o mv-pos next)) adjs)]
-         (cond [(! <<v not 'o empty? unknowns)
+                       filter (~ (! <<v known-empty-space? 'o c 'read 'o mv-pos next)) adjs)]
+         (cond [(! <<v not 'o empty? goals)
+                [goal-dir <- (! first goals)]
+                (! trace-inputs 'goal next came_from (cons goal-dir '()))]
+               [(! <<v not 'o empty? unknowns)
                 [final-dir <- (! <<v List 'o first unknowns)]
-                (! trace-inputs next came_from final-dir)]
+                (! trace-inputs 'explore next came_from final-dir)]
                [else
                 [fron*cf <- 
                  (! cl-foldl (~ (! colist<-list knowns))
@@ -102,26 +114,34 @@
                          (! Cons frontier came_from)]))
                     (cons frontier came_from))]
                 [frontier <- (! car fron*cf)] [came_from <- (! cdr fron*cf)]
-                (! bfs-loop c came_from frontier)])]))
+                (! bfs-loop c goal came_from frontier)])]))
 
-(def-thunk (! bfs c ptr)
-  [came_from <- (! empty-table 'set ptr #f)]
-  [frontier <- (! List ptr)]
-  (! bfs-loop c came_from frontier))
+(def-thunk (! bfs c start goal)
+  [came_from <- (! empty-table 'set start #f)]
+  [frontier <- (! List start)]
+  (! bfs-loop c goal came_from frontier))
 
-(def-thunk (! next-move c ptr)
-  [unknown-dir?
-   = (~ (λ (dir) (! <<v equal? #\space 'o c 'read 'o coord-add ptr 'o coord<-arrow dir '$)))]
-  [unexplored <- (ret '())
-              ;(! filter unknown-dir? '(1 2 3 4))
-              ]
-  (! <<v displayall 'o bfs c ptr))
+(def-thunk (! next-move c ptr) (! <<v second 'o bfs c ptr #f))
 
-(def-thunk (! repair-driver c ptr inputs count iK)
-  [count <- (cond [(! zero? count) (! display-canvas c) (ret 20)]
+(def-thunk (! shortest-path c start goal)
+  [outp <- (! bfs c start goal)]
+  [key <- (! first outp)]
+  ((copat
+    [((= 'goal)) (! <<v length 'o second outp)]
+    [((= 'explore)) (ret #f)])
+   key))
+
+(def-thunk (! repair-driver c ptr start goal inputs count iK)
+  [count <- (cond [(! zero? count) (! display-canvas c) (ret 200)]
                   [else (! - count 1)])]
-  [inputs <- (cond [(! empty? inputs) (! bfs c ptr)]
-                   [else (ret inputs)])]
+  (cond [(! empty? inputs)
+         [found-goal? <- (if goal (! shortest-path c start goal) (ret #f))]
+         (cond [(ret found-goal?) (ret found-goal?)]
+               [else
+                [inputs <- (! next-move c ptr)]
+                (! repair-driver c ptr start goal inputs count iK)])]
+        [else
+         (do
   [inp <- (! first inputs)] [inputs <- (! rest inputs)]
   (! iK inp (~ (copat
    [(outp oK)
@@ -129,17 +149,17 @@
     ((copat
       [((= 0))
        (! c 'write next-pos #\#)
-       (! oK (~ (! repair-driver c ptr inputs count)))]
+       (! oK (~ (! repair-driver c ptr start goal inputs count)))]
       [((= 1))
-       (! c 'write ptr #\.)
+       (cond [(! equal? ptr goal) (! c 'write ptr #\O)] [else (! c 'write ptr #\.)])
        (! c 'write next-pos #\D)
-       (! oK (~ (! repair-driver c next-pos inputs count)))]
+       (! oK (~ (! repair-driver c next-pos start goal inputs count)))]
       [((= 2))
        (! c 'write ptr #\.)
        (! c 'write next-pos #\O)
        (! display-canvas c)
-       (ret next-pos)])
-     outp)]))))
+       (! oK (~ (! repair-driver c next-pos start next-pos inputs count)))])
+     outp)]))))]))
 
 (define sz/2 25)
 
@@ -148,14 +168,12 @@
   [c <- (! mk-canvas sz sz #\space)]
   [ptr <- (! mk-coord sz/2 sz/2)]
   (! c 'write ptr #\D)
-  (ret (~ (! msg-parser (~ (! repair-driver c ptr '() 100))))))
+  (ret (~ (! msg-parser (~ (! repair-driver c ptr ptr #f '() 100))))))
 
 (def-thunk (! main-a)
   [syn <- (! parse-intcode-program "input")]
-  (! displayall 'parsed)
   [driver <- (! initialize-driver-a )]
-  [oxy-posn <- (! interp-intcode-program syn driver)]
-  (! List 'start-posn sz/2 sz/2 'oxy-posn oxy-posn))
+  (! interp-intcode-program syn driver))
 
 (def-thunk (! main-b)
   (ret 'not-done-yet))
