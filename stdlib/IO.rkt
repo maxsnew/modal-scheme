@@ -22,14 +22,14 @@
    [p <- (! open-input-file name)]
    (! read-all-chars-port p)])
 
-;; CoList String
 (def-thunk (! slurp-lines-port~ p)
   (do [l <- (! read-line p)]
       (cond [(! eof-object? l)
              (! close-input-port p)
              (! cl-nil)]
-            [else (! cl-cons l (~ (! slurp-lines-port~)))])))
+            [else (! cl-cons l (~ (! slurp-lines-port~ p)))])))
 
+;; CoList String
 (def-thunk (! slurp-lines~)
   [slurp-file
    = (~ (λ (name)

@@ -2,7 +2,8 @@
 
 (require "../stdlib.rkt")
 (require "CoList.rkt")
-(provide parse-num upper-case? letter? UPPERS digit<-char)
+(provide parse-num upper-case? letter? UPPERS digit<-char
+         slurp-satisfying)
 
 (define UPPERS "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 (define DOWNERS "abcdefghijklmnopqrstuvwxyz")
@@ -63,3 +64,17 @@
 ;; Listof Char -> F Nat
 (define-thunk (! parse-num ds)
   (! apply parse-num^ ds))
+
+(def/copat (! slurp-sat-loop k p? acc)
+  [(#:bind)
+   [out <- (! reverse acc)]
+   (! k out)]
+  [(x)
+   (cond [(! p? x)
+          [acc <- (! Cons x acc)]
+          (! slurp-sat-loop k p? acc)]
+         [else
+          [out <- (! reverse acc)]
+          (! k out x)])])
+
+(def-thunk (! slurp-satisfying p? k) (! slurp-sat-loop k p? '()))
