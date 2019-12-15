@@ -83,10 +83,7 @@
 ;; frontier : Queue Posn
 ;; Returns a Listof Dir
 (def-thunk (! bfs-loop c goal came_from frontier)
-  (cond [(! empty? frontier)
-         (! displayall 'no-frontier goal)
-         (! <<v displayall 'came_from 'o came_from 'to-list)
-         (! error "empty frontier")]
+  (cond [(! empty? frontier) (! List 'seen-it-all #f)]
         [else
          [rev_front <- (! reverse frontier)]
          [next <- (! first rev_front)] [frontier <- (! <<v reverse 'o rest rev_front '$)]
@@ -175,5 +172,85 @@
   [driver <- (! initialize-driver-a )]
   (! interp-intcode-program syn driver))
 
+(def-thunk (! maximum x y)
+  (cond [(! < x y) (ret y)]
+        [else (ret x)]))
+
+;; cur-max: number
+;; distances: Table Posn Number
+;; frontier: Queue Posn
+(def-thunk (! greatest-distance c cur-max distances frontier)
+  (cond [(! empty? frontier) (ret cur-max)]
+        [else
+         [rev_front <- (! reverse frontier)]
+         [next <- (! first rev_front)] [frontier <- (! <<v reverse 'o rest rev_front '$)]
+         [next-dist+1 <- (! <<v + 1 'o distances 'get next #f)]
+         [adjs = '(1 2 3 4)]
+         [knowns <- (! <<v
+                       filter (~ (! <<v not 'o distances 'has-key? 'o mv-pos next)) 'o
+                       filter (~ (! <<v known-empty-space? 'o c 'read 'o mv-pos next)) adjs)]
+         [max*fron*dist <- 
+                  (! cl-foldl (~ (! colist<-list knowns))
+                     (~ (copat
+                         [(st dir)
+                          [cur-max <- (! first st)] [frontier <- (! second st)] [distances <- (! third st)]
+                          [next-pos <- (! mv-pos next dir)]
+                          [frontier <- (! Cons next-pos frontier)]
+                          [distances <- (! distances 'set next-pos next-dist+1)]
+                          [cur-max <- (! maximum cur-max next-dist+1)]
+                          (! List cur-max frontier distances)]))
+                     (cons cur-max (cons frontier (cons distances '()))))]
+         [cur-max <- (! first max*fron*dist)] [frontier <- (! second max*fron*dist)] [distances <- (! third max*fron*dist)]
+         (! greatest-distance c cur-max distances frontier)]))
+
+(def-thunk (! oxy-fill-time c oxy-posn)
+  [distance-tbl <- (! empty-table 'set oxy-posn 0)]
+  [frontier <- (! List oxy-posn)]
+  (! greatest-distance c 0 distance-tbl frontier))
+
+;; first, explore until bfs finds no new spots
+;; then do a bfs to find the maximal distance from oxy to something else
+(def-thunk (! oxy-fill-driver c ptr oxy-posn inputs count iK)
+  [count <- (cond [(! zero? count) (! display-canvas c) (ret 300)]
+                  [else (! - count 1)])]
+  (cond [(! empty? inputs)
+         [may-inputs <- (! next-move c ptr)]
+         (cond [(ret may-inputs) (! oxy-fill-driver c ptr oxy-posn may-inputs count iK)]
+               [else
+                (! display-canvas c)
+                (! displayall 'fill-time)
+                (! oxy-fill-time c oxy-posn)])]
+        [else
+         (do
+  [inp <- (! first inputs)] [inputs <- (! rest inputs)]
+  (! iK inp (~ (copat
+   [(outp oK)
+    [next-pos <- (! <<v coord-add ptr 'o coord<-arrow inp '$)]
+    ((copat
+      [((= 0))
+       (! c 'write next-pos #\#)
+       (! oK (~ (! oxy-fill-driver c ptr oxy-posn inputs count)))]
+      [((= 1))
+       (cond [(! equal? ptr oxy-posn) (! c 'write ptr #\O)] [else (! c 'write ptr #\.)])
+       (! c 'write next-pos #\D)
+       (! oK (~ (! oxy-fill-driver c next-pos oxy-posn inputs count)))]
+      [((= 2))
+       (! c 'write ptr #\.)
+       (! c 'write next-pos #\O)
+       (! display-canvas c)
+       (! oK (~ (! oxy-fill-driver c next-pos next-pos inputs count)))])
+     outp)]))))]))
+
+(def-thunk (! initialize-driver-b)
+  [sz <- (! * 2 sz/2)]
+  [c <- (! mk-canvas sz sz #\space)]
+  [ptr <- (! mk-coord sz/2 sz/2)]
+  (! c 'write ptr #\D)
+  (ret (~ (! msg-parser (~ (! oxy-fill-driver c ptr #f '() 100))))))
+
+
+
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  [syn <- (! parse-intcode-program "input")]
+  [driver <- (! initialize-driver-b)]
+  (! interp-intcode-program syn driver))
