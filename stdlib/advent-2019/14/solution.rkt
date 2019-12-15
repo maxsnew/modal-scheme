@@ -214,18 +214,36 @@
   [tbl-ctx <- (! add-to-tbl-ctx list-ctx empty-table)]
   (! mk-sequent tbl-ctx num outp))
 
-(def-thunk (! ore->fuel gens priority)
-  [->fuel <- (! <<v hashify-ctx 'o find-generator gens "FUEL" '$)]
-  (! <<v @> 'to-list 'o sequent-ctx 'o get-to-ore ->fuel gens priority)
-  )
+(def-thunk (! ore->fuel n gens priority)
+  [t <- (! empty-table 'set "FUEL" n)]
+  [fuel-> <- (! mk-sequent t 1 "")]
+  (! <<v cdr 'o first 'o @> 'to-list 'o sequent-ctx 'o get-to-ore fuel-> gens priority))
 
 (def/copat (! main-a)
   [(#:bind) (! main-a "/dev/stdin")]
   [(f)
    [gens <- (! parse-generators f)]
-   [summary <- (! summarize-generators gens)]
-   [priority <- (! apply topo-sort summary)]
-   (! ore->fuel gens priority)])
+   [priority <- (! <<v apply topo-sort 'o summarize-generators gens)]
+   (! ore->fuel 1 gens priority)])
 
-(def-thunk (! main-b)
-  (ret 'not-done-yet))
+(define TRILLION 1000000000000)
+
+;; invariant:
+;;   f lo <= goal
+;;   f hi > goal
+;; if hi = lo + 1, done
+(def-thunk (! bin-search f lo hi)
+  (cond [(! <<v = hi 'o + 1 lo)
+         (ret lo)]
+        [else
+         [mid <- (! <<v swap quotient 2 'o + lo hi)]
+         [mid-y <- (! f mid)]
+         (cond [(! <= mid-y TRILLION) (! bin-search f mid hi)]
+               [else (! bin-search f lo mid)])]))
+
+(def/copat (! main-b)
+  [(#:bind) (! main-a "/dev/stdin")]
+  [(f)
+   [gens <- (! parse-generators f)]
+   [priority <- (! <<v apply topo-sort 'o summarize-generators gens)]
+   (! bin-search (~ (λ (n) (! ore->fuel n gens priority))) 1 TRILLION)])
