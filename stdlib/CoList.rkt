@@ -17,6 +17,7 @@
 
          take-while
          cycle
+         first-such-that
          )
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
@@ -323,3 +324,10 @@
         [else (! cl-cons front (~ (! chunks size back)))]))
 
 
+;; U(A -> F Bool) -> U(CoList A) -> F A
+(def-thunk (! first-such-that p? xs)
+  (! cl-foldr xs
+     (~ (copat [(x k)
+                (cond [(! p? x) (ret x)]
+                      [else (! k)])]))
+     (~ (! error 'didnt-find-it))))
