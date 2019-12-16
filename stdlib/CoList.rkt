@@ -10,6 +10,8 @@
          range cartesian-product sep-by split-at chunks
          cl-zipwith cl-last
 
+         repeat iterate
+
          monoid-cl-foldl
          minimum-monoid
          minimum-by
@@ -72,6 +74,7 @@
   (! cl-unfold iter))
 
 
+;; U(CoList A1) -> U(CoList A2) -> CoList (Cons A1 A2)
 
 (def-thunk (! cl-zip-cons c1 c2)
   [v1 <- (! c1)] [v2 <- (! c2)]
@@ -84,15 +87,22 @@
      [t1 <- (! clv-tl v1)] [t2 <- (! clv-tl v2)]
      (! clv-cons (cons h1 h2) (~ (! cl-zip-cons t1 t2)))]))
 
-(def-thunk (! repeat x)
-  (! cl-cons x (~ (! repeat x))))
+(def-thunk (! repeat x n)
+  (cond [(! = 0 n) (! cl-nil)]
+        [else
+         [n-1 <- (! - n 1)]
+         (! cl-cons x (~ (! repeat x n-1)))]))
+
+(def-thunk (! forever x)
+  (! cl-cons x (~ (! forever x))))
 
 ;; zip-with : U(CoList A) -> ... -> CoList (List A ...)
 (def/copat (! cl-zipwith)
   [((rest ls))
-   (! cl-foldr (~ (! colist<-list ls))
-      cl-zip-cons
-      (~ (! repeat '())))])
+
+   (! cl-foldr (~ (! colist<-list ls)) ;; U(CoList (U(CoList A)))
+      cl-zip-cons ;; U(CoList A) -> 
+      (~ (! forever '())))])
 
 ;; CBN function:
 ;; U(A -> F B) -> U(CoList A) -> CoList A
@@ -331,3 +341,9 @@
                 (cond [(! p? x) (ret x)]
                       [else (! k)])]))
      (~ (! error 'didnt-find-it))))
+
+(def-thunk (! iterate f seed)
+  (! cl-unfold
+     (~ (λ (cur) (do [next <- (! f cur)] (! Cons cur next))))
+     seed))
+
