@@ -10,25 +10,25 @@
 
 (provide main-a main-b)
 
-(def/copat (! driver-a canvas x y)
+(def/copat (! driver-a canvas x y k)
   [((= 'output) n oK)
    [c <- (! integer->char n)]
    (cond [(! equal? c #\newline)
           [x = 0] [y <- (! + y 1)]
-          (! oK (~ (! driver-a canvas x y)))]
+          (! oK (~ (! driver-a canvas x y k)))]
          [else
           [pt <- (! mk-coord x y)]
           (! canvas 'write pt c)
           [x <- (! + x 1)]
-          (! oK (~ (! driver-a canvas x y)))])]
-  [((= 'halt)) (ret canvas)])
+          (! oK (~ (! driver-a canvas x y k)))])]
+  [() (! k canvas)])
 
 (define WIDTH 49)
 (define HEIGHT 41)
 
 (def-thunk (! initialize-driver-a)
   [c <- (! mk-canvas WIDTH HEIGHT #\space)]
-  (ret (~ (! driver-a c 0 0))))
+  (ret (~ (! driver-a c 0 0 abort))))
 
 (def-thunk (! intersection? canvas x y)
   [pt <- (! mk-coord x y)]
@@ -65,29 +65,51 @@
 
 (def/copat (! enter-string chars k)
   [((= 'input) iK)
-  (! displayall 'letsgo)
-   (cond [(! empty? chars) (! iK #\newline k)]
+   (cond [(! empty? chars)
+          [newline-int <- (! char->integer #\newline)]
+          (! iK newline-int k)]
          [else
           [c <- (! first chars)] [chars <- (! rest chars)]
           (! iK c (~ (! enter-string chars k)))])])
 
-(def-thunk (! input-list strings k)
-  (! displayall 'letsgo)
-  [fst <- (! first strings)]
-  [strings <- (! rest strings)]
-  [k <- (cond [(! empty? strings) (ret k)]
-              [else (ret (~ (! input-list strings k)))])]
-  (! enter-string fst k))
+(def/copat (! write-loop canvas x y k)
+  [((= 'output) n oK)
+   [c <- (! integer->char n)]
+   (cond [(! equal? c #\newline)
+          [x = 0] [y <- (! + y 1)]
+          (! oK (~ (! write-loop canvas x y k)))]
+         [else
+          [pt <- (! mk-coord x y)]
+          (! canvas 'write pt c)
+          [x <- (! + x 1)]
+          (! oK (~ (! write-loop canvas x y k)))])]
+  [() (! k)])
 
-(def-thunk (! driver-b)
-  [inputs <- (! <<v map string->list 'o List MAIN A B C "n")]
-  (! input-list inputs
-     (~ (copat
-         [((= 'output) o oK) (ret o)]))))
+;; (def-thunk (! input-list c strings k)
+;;   (! displayall 'letsgo strings k)
+;;   (! <<n cl-foreach displayall 'o c 'paint Ret)
+;;   [fst <- (! first strings)]
+;;   [strings <- (! rest strings)]
+;;   [k <- (cond [(! empty? strings) (ret k)]
+;;               [else (ret (~ (! input-list c strings k)))])]
+;;   (! write-loop c (~ (! enter-string fst (~ (! input-list c strings k))))))
+
+(def-thunk (! driver-b c inps last-out)
+  (copat
+   [((= 'input))
+    [inp <- (! <<v map char->integer 'o string->list 'o first inps)]
+    [inps <- (! rest inps)]
+    (! displayall 'inputting inp)
+    (! enter-string inp (~ (! driver-b c inps last-out)) 'input)]
+   [((= 'output) o oK) (! oK (~ (! driver-b c inps o)))]
+   [((= 'halt)) (ret last-out)]))
 
 (def-thunk (! main-b)
+  [HEIGHT <- (! + 20 HEIGHT)]
   [syn <- (! parse-intcode-program "input")]
   [syn-tail <- (! rest syn)]
   [syn <- (! Cons 2 syn-tail)]
-  (! interp-intcode-program syn (~ (! driver-b))))
+  [c <- (! mk-canvas WIDTH HEIGHT #\space)]
+  [inps <- (! List MAIN A B C "n")]
+  (! interp-intcode-program syn (~ (! driver-b c inps #f))))
 
