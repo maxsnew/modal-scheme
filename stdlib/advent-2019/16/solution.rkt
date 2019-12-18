@@ -76,13 +76,6 @@
   (! <<n (~ (! <<v nth n 'o nth rounds)) 'o iterate (~ (! <<n Ret 'o reversed-phase)) 'o range 0 +inf.0)
   )
 
-;; The correct instructions:
-;; L,10,R,8,R,8,L,10,R,8,R,8,L,10,L,12,R,8,R,10,R,10,L,12,R,10,L,10,L,12,R,8,R,10,R,10,L,12,R,10,L,10,L,12,R,8,R,10,R,10,L,12,R,10,R,10,L,12,R,10,L,10,R,8,R,8
-
-;; Main Routine: A,A,B,C,B,C,B,C,C,A
-;; Subroutine A: L,10,R,8,R,8
-;; Subroutine B: L,10,L,12,R,8,R,10
-;; Subroutine C: R,10,L,12,R,10
 
 (def-thunk (! main-b)
   (ret 'not-done-yet))

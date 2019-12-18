@@ -51,5 +51,43 @@
      cl-filter (~ (! apply (~ (! intersection? canvas)))) 'o
      cartesian-product (~ (! range 1 w-2)) (~ (! range 1 h-2))))
 
+;; The correct instructions:
+;; L,10,R,8,R,8,L,10,R,8,R,8,L,10,L,12,R,8,R,10,R,10,L,12,R,10,L,10,L,12,R,8,R,10,R,10,L,12,R,10,L,10,L,12,R,8,R,10,R,10,L,12,R,10,R,10,L,12,R,10,L,10,R,8,R,8
+
+;; Main Routine: A,A,B,C,B,C,B,C,C,A
+(define MAIN "A,A,B,C,B,C,B,C,C,A")
+;; Subroutine A: L,10,R,8,R,8
+(define A "L,10,R,8,R,8" )
+;; Subroutine B: L,10,L,12,R,8,R,10
+(define B "L,10,L,12,R,8,R,10")
+;; Subroutine C: R,10,L,12,R,10
+(define C "R,10,L,12,R,10")
+
+(def/copat (! enter-string chars k)
+  [((= 'input) iK)
+  (! displayall 'letsgo)
+   (cond [(! empty? chars) (! iK #\newline k)]
+         [else
+          [c <- (! first chars)] [chars <- (! rest chars)]
+          (! iK c (~ (! enter-string chars k)))])])
+
+(def-thunk (! input-list strings k)
+  (! displayall 'letsgo)
+  [fst <- (! first strings)]
+  [strings <- (! rest strings)]
+  [k <- (cond [(! empty? strings) (ret k)]
+              [else (ret (~ (! input-list strings k)))])]
+  (! enter-string fst k))
+
+(def-thunk (! driver-b)
+  [inputs <- (! <<v map string->list 'o List MAIN A B C "n")]
+  (! input-list inputs
+     (~ (copat
+         [((= 'output) o oK) (ret o)]))))
+
 (def-thunk (! main-b)
-  (ret 'not-done-yet))
+  [syn <- (! parse-intcode-program "input")]
+  [syn-tail <- (! rest syn)]
+  [syn <- (! Cons 2 syn-tail)]
+  (! interp-intcode-program syn (~ (! driver-b))))
+
