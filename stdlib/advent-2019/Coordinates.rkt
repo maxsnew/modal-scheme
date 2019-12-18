@@ -5,6 +5,7 @@
 (provide mk-coord x-coord y-coord scale coord-add
          pt<-ix ix<-pt
 
+         canvas<-vec
          mk-square-canvas
          mk-canvas)
 
