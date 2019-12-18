@@ -9,6 +9,56 @@
 
 (provide main-a main-b)
 
+;; 3 maps to
+;; 0 0 0 1 1 1 0 0 0 -1 -1 -1
+;; 4 5 6
+;;
+(def-thunk (! digitize) (! <<v swap modulo 10 'o abs))
+
+(def-thunk (! range+ n x)
+  [x+n <- (! + x n)]
+  (! range x x+n))
+
+(def-thunk (! fft-+-filter n max)
+  (! <<n
+     take-while (~ (! > max))'o 
+     cl-bind^ (~ (! range+ n)) 'o
+     cl-map  (~ (! <<v + -1 n 'o * 4 n)) 'o 
+     range 0 +inf.0 '$))
+
+(def-thunk (! fft---filter n max)
+  [3n <- (! * 3 n)]
+  (! <<n
+     take-while (~ (! > max))'o 
+     cl-bind^ (~ (! range+ n)) 'o
+     cl-map  (~ (! <<v + -1 3n 'o * 4 n)) 'o 
+     range 0 +inf.0 '$))
+
+(def-thunk (! apply-fft-filters src out n)
+  ;; (! displayall src out n)
+  [max <- (! src 'size)]
+  [n+1 <- (! + n 1)]
+  [pluses  = (~ (! <<n cl-map (~ (! <<v src 'get)) 'o fft-+-filter n+1 max))]
+  [minuses = (~ (! <<n cl-map (~ (! <<v * -1 'o src 'get)) 'o fft---filter n+1 max))]
+  (! <<v out 'set n 'o digitize 'o
+     cl-foldl^ + 0
+     (~ (! cl-append pluses minuses))))
+
+(def-thunk (! test)
+  [v <- (! mutable-flexvec<-list '(0 1 2 3 4 5 6 7 8 9))]
+  [o <- (! mk-mutable-flexvec 20 0)]
+  ;; (! apply-fft-filters v o 0)
+  (! <<n list<-colist 'o o 'to-colist)
+  )
+
+(def-thunk (! phase-v src)
+  [sz <- (! src 'size)]
+  [out <- (! mk-mutable-flexvec sz 0)]
+  (! cl-foreach
+     (~ (! apply-fft-filters src out))
+     (~ (! range 0 sz)))
+  (ret out))
+
 (def-thunk (! fft-filter n)
   (! <<n
      (~ (! <<v $ 'o clv-tl 'o $))'o
@@ -16,14 +66,12 @@
      cl-append* (~ (! repeat 0 n)) (~ (! repeat 1 n)) (~ (! repeat 0 n)) (~ (! repeat -1 n)) '$
      ))
 
-;; U(CoList Num) -> Filter -> Num
 (def-thunk (! apply-filter nums filter)
   ;; (! displayall 'apply-filter nums filter)
   (! <<n
      cl-foldl^ + 0 'o
      cl-map * nums (~ (! colist<-list filter)) '$))
 
-(def-thunk (! digitize) (! <<v swap modulo 10 'o abs))
 
 (def-thunk (! phase filters nums)
   (! <<n
@@ -40,12 +88,27 @@
      range 1 len+1))
 
 (def-thunk (! main-a (rest args))
-  [l-of-num <- (! <<v map parse-num 'o map List 'o string->list 'o first 'o apply slurp-lines! args)]
-  [len <- (! length l-of-num)]
-  [filters <- (! generate-filters len)]
-  (! displayall 'start)
-  (! <<n cl-foreach displayall 'o cl-zipwith (~ (! range 0 2)) (~ (! iterate (~ (! phase filters)) l-of-num))))
+  [v <- (! <<v mutable-flexvec<-list 'o map parse-num 'o map List 'o string->list 'o first 'o apply slurp-lines! args)]
+  (! displayall 'start v)
+  (! <<n cl-foreach displayall 'o
+     cl-zipwith
+     (~ (! range 0 101))
+     (~ (! <<n cl-map (~ (! <<n list<-colist 'o @> 'to-colist)) 'o iterate phase-v v))))
 
+(def-thunk (! b-phase src)
+  [sz <- (! src 'size)]
+  [out <- (! mk-mutable-flexvec sz 0)]
+  (! <<n
+     cl-foldl^
+     (~ (λ (acc ix)
+          (do [val <- (! <<v swap modulo 10 'o + acc 'o src 'get ix)]
+              (! out 'set ix val)
+            (ret val))))
+     0 'o
+     cl-map (~ (! - sz 1))'o
+     range 0 sz '$)
+  (ret out)
+  )
 
 ;; For B, the vector is too big to attempt the same thing as
 ;; before. We need a different strategy.  The trick is that when you
@@ -76,7 +139,7 @@
   (! <<n (~ (! <<v nth n 'o nth rounds)) 'o iterate (~ (! <<n Ret 'o reversed-phase)) 'o range 0 +inf.0)
   )
 
-
 (def-thunk (! main-b)
+  
   (ret 'not-done-yet))
 

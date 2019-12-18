@@ -2,7 +2,7 @@
 
 (require "../stdlib.rkt")
 (require "CoList.rkt")
-(provide mutable-flexvec<-list initialize-memory)
+(provide mutable-flexvec<-list mk-mutable-flexvec initialize-memory)
 
 ;; A FlexVec A is a codata type implementing
 ;; codata FlexVec A where
@@ -60,12 +60,17 @@
    [((= 'update) ix up #:bind)
     (! <<v vector-set! v ix 'o up 'o vector-ref v ix)
     (ret (~ (! mutable-flexvec v)))]
+   [((= 'size) #:bind) (! vector-length v)]
    [((= 'to-colist) #:bind)
     [len <- (! vector-length v)]
     (! <<n cl-map (~ (! vector-ref v)) 'o range 0 len)]))
 
 (def-thunk (! mutable-flexvec<-list l #:bind)
   [v <- (! list->vector l)]
+  (ret (~ (! mutable-flexvec v))))
+
+(def-thunk (! mk-mutable-flexvec n x #:bind)
+  [v <- (! make-vector n x)]
   (ret (~ (! mutable-flexvec v))))
 
 ;; U (FlexVec A) -> CoList A

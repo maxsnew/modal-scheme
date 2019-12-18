@@ -10,7 +10,7 @@
          range cartesian-product sep-by split-at chunks
          cl-zipwith cl-last
 
-         repeat iterate
+         repeat forever iterate
 
          monoid-cl-foldl
          minimum-monoid
@@ -75,7 +75,6 @@
 
 
 ;; U(CoList A1) -> U(CoList A2) -> CoList (Cons A1 A2)
-
 (def-thunk (! cl-zip-cons c1 c2)
   [v1 <- (! c1)] [v2 <- (! c2)]
   (cond
@@ -342,7 +341,10 @@
                       [else (! k)])]))
      (~ (! error 'didnt-find-it))))
 
+
 (def-thunk (! iterate f seed)
   (! cl-unfold
-     (~ (λ (cur) (do [next <- (! f cur)] (! Cons cur next))))
-     seed))
+     (~ (λ (cur~)
+          (do [cur <- (! cur~)]
+              (! Cons cur (~ (! f cur))))))
+     (~ (ret seed))))
