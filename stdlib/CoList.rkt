@@ -20,6 +20,8 @@
          take-while
          cycle
          first-such-that
+
+         member?
          )
 ;; CoList A = F (CoListVert A)
 ;; data CoListVert A where
@@ -348,3 +350,5 @@
           (do [cur <- (! cur~)]
               (! Cons cur (~ (! f cur))))))
      (~ (ret seed))))
+
+(def-thunk (! member? x cl) (! <<n any? 'o cl-map (~ (! equal? x)) cl))
