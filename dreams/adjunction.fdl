@@ -1,0 +1,45 @@
+-- What would a Haskell-like CBPV look like?
+
+-- Let's look at what "monadic" interpreters would look like to get an
+   idea
+-- of course we'll use an untyped cbpv lang as our object language
+
+-- for types, we'll have bools, funs and shifts, with no effects to
+   start, but we'll have errors because of looking up variables
+
+data Val
+  = Var String
+  | True
+  | False
+  | Thunk Comp
+data Comp
+  = If Val Comp Comp
+  | Force Val
+  | Lambda String Comp
+  | App Comp Val
+  | Ret Val
+  | Bind Comp String Comp
+
+bool<-val :: Val -> F Boolean
+bool<-val True = true
+bool<-val False = false
+bool<-val _ = error
+
+interpC :: U(String -> F Val) -> Comp -> F Val -- Error if it's not an F or free var
+interpC env (If v ct cf) =
+  b <- (bool<-val 'vo interpV env v);
+  if b (interpC env ct) (interpC env cf)
+interpC 
+
+interpV :: U(String -> F Val) -> Val -> F Val -- Error if there's a free variable
+interpV env (Var x) = env x
+interpV env v = ret v
+
+
+class Adjunction (F : V -> C) (U : C -> V) where
+  ???
+
+-- examples
+-- state adjunction
+instance (Adjunction F U) => (Adjunction (\a -> F (s x a)) (\c -> U (s -> c))) where
+  
