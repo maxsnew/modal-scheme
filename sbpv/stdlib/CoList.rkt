@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
+(require sbpv/prelude)
 (provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons cl-cons
          cl-single
          cl-unfold colist<-list

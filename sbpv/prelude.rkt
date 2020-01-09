@@ -2,7 +2,7 @@
 
 (require (for-syntax syntax/parse
                      (except-in racket/base quote)
-                     (only-in "sbpv/main.rkt" quote)))
+                     (only-in "main.rkt" quote)))
 (provide Y do do^ ifc define-rec-thunk define-thunk def-thunk def/copat
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth fifth sixth empty? rest grab-stack dot-args

@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
+(require sbpv/prelude)
 (provide update update^ empty-table table<-hash)
 
 ;; codata Table K V where

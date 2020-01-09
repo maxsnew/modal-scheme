@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
 (provide mutable-flexvec<-list mk-mutable-flexvec initialize-memory)
 
 ;; A FlexVec A is a codata type implementing

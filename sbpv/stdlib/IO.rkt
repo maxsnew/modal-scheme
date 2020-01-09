@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
 (provide slurp-lines! slurp-lines~ read-all-chars)
 
 ;; CoList Char
