@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
+(require sbpv/prelude)
 
 (provide set<-hash set<-list empty-set set-single)
 
