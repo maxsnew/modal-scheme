@@ -25,15 +25,15 @@ The language is implemented as a "#lang" in Racket, using the
 
 # Repository Structure
 
-1. The actual library is in the `sbpv` directory, which can be installed
-using `raco`. It also contains a bare-bones stdlib.
-2. More example code
-can be found in the `examples` directory.
-3. The `cbpv` directory
-contains the beginnings of a typed version of the language.
+1. The actual library is in the `sbpv` directory, which can be
+   installed using `raco`. It also contains a bare-bones stdlib.
+2. More example code can be found in the `examples` directory.
+3. The `cbpv` directory contains the beginnings of a typed version of
+   the language.
 4. The `fiddle` directory contains the beginnings of an interpreter
-written in Haskell.
-5. The `dreams` directory contains some 
+   written in Haskell.
+5. The `notes` directory contains some notes on language design and
+   comments on programming in this unfamiliar style.
 
 # Performance
 
