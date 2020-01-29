@@ -35,7 +35,8 @@
      [(displayln (syntax->datum #`(#%module-begin
                                    (begin
                                      d ...
-                                     (main e) ...))))]
+                                     (main e) ...)
+                                   (void))))]
      #`(#%module-begin
         (begin
           d ...

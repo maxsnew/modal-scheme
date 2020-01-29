@@ -2,7 +2,10 @@
 
 (require sbpv/prelude)
 (require sbpv/stdlib/CoList)
-(provide slurp-lines! slurp-lines~ read-all-chars)
+(provide slurp-lines!
+         slurp-lines~
+         read-all-chars
+         display-all-to-file)
 
 ;; CoList Char
 ;; lazily read stdin
@@ -43,3 +46,12 @@
 ;; F List String
 (def-thunk (! slurp-lines! (rest args))
   (! list<-colist (~ (! apply slurp-lines~ args))))
+
+(def-thunk (! display-loop p)
+  (! cl-foreach (~ (! swap display p))))
+
+;; U(CoList String) -> Path -> F 1
+(def-thunk (! display-all-to-file strs path)
+  [p <- (! open-output-file path)]
+  (! display-loop p strs)
+  (! close-output-port p))

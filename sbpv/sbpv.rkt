@@ -86,8 +86,11 @@
 (require-fo-wrapped-provide racket close-input-port)
 (require-fo-wrapped-provide racket/base read-line)
 (require-fo-wrapped-provide racket/base read-char)
+(require-fo-wrapped-provide racket open-output-file)
+(require-fo-wrapped-provide racket close-output-port)
 (require-fo-wrapped-provide racket/base displayln)
 (require-fo-wrapped-provide racket/base display)
+(require-fo-wrapped-provide racket current-command-line-arguments) ;; returns a vector
 
 (require-fo-wrapped-provide racket/base number->string)
 (require-fo-wrapped-provide racket/base string->list)
