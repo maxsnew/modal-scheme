@@ -1,5 +1,7 @@
 #lang sbpv
 
+(require sbpv/prelude)
+
 ;; In Haskell, we are used to simulating call-by-value effects using
 ;; *monads*
 
@@ -66,10 +68,10 @@
 ;; Church encoded Error monad
 ;;
 ;; Err E A := forall Y. U(A -> Y) -> U(E -> Y) -> Y
-(def/copat (! retE x kV kE) (! kV x))
+(def-thunk (! retE x kV kE) (! kV x))
 
 ;; U(Err E X) -> U(X -> Err E X') -> Err E X'
-(def/copat (! bindE th mK kV kE)
+(def-thunk (! bindE th mK kV kE)
   (! th (~ (λ (x) (! mK x kV kE))) kE))
 
 
@@ -80,8 +82,8 @@
 
 ;; How about a church encoded state monad?
 ;; St S A := forall Y. S -> U(X -> S -> Y) -> Y
-(def/copat (! retSt x s k) (! k x))
-(def/copat (! bindSt th mK s k)
+(def-thunk (! retSt x s k) (! k x))
+(def-thunk (! bindSt th mK s k)
   (! th s (~ (λ (x s) (! mK x s k)))))
 
 ;; Here's a more interesting one, what about the delimited
@@ -92,14 +94,14 @@
 ;; In CBPV we can do the same thing but with R being a computation type:
 ;;
 ;; Cont R A := U(A -> R) -> R
-(def/copat (! retK x k) (! k x))
-(def/copat (! bindK th mK k)
+(def-thunk (! retK x k) (! k x))
+(def-thunk (! bindK th mK k)
   (! th (~ (λ (x) (! mK x k)))))
 
 ;; Reader?
 ;; Reader R A := R -> F A
-(def/copat (! retR x r) (! ret x))
-(def/copat (! bind th mK r)
+(def-thunk (! retR x r) (ret x))
+(def-thunk (! bind th mK r)
   [x <- (! th r)]
   (! mK x r))
 
@@ -112,23 +114,23 @@
 ;; =~ forall Y. UY -> U(A -> Y) -> U(A -> A -> Y) -> ... -> Y
 ;; =~ nu L. forall Y. UY -> U(A -> UL -> Y) -> Y
 
-(def/copat (! retR x doneK moreK)
+(def-thunk (! retList x doneK moreK)
   (! moreK x (~ (λ (doneK moreK) (! doneK)))))
 
-(def/copat (! eff-append xs ys nilK consK)
+(def-thunk (! eff-append xs ys nilK consK)
   (! xs (~ (! ys nilK consK))
      (~ (λ (x xs)
           (! consK x (~ (! append xs ys)))))))
 
-(def/copat (! bind th ;; U(ListEff X)
-                   mK ;; X -> U(ListEff X')
-                   doneK ;; UY
-                   moreK ;; U(X' -> U(ListEff X') -> Y)
-                   );; Y
+(def-thunk (! bindList th ;; U(ListEff X)
+              mK ;; X -> U(ListEff X')
+              doneK ;; UY
+              moreK ;; U(X' -> U(ListEff X') -> Y)
+              );; Y
   (! th doneK
-     (λ (x xs)
-       (! eff-append (~ (! mK x doneK moreK))
-                     (~ (! bind xs mK doneK moreK))))))
+     (~ (λ (x xs)
+          (! eff-append (~ (! mK x doneK moreK))
+             (~ (! bind xs mK doneK moreK)))))))
 
 ;; What do algebras of these monads look like?
 
@@ -156,11 +158,11 @@
 ;; because this is equivalent to
 ;; Algebra Eff (Eff X)
 ;; so we just use the free algebra structure
-(def/copat (! embed return bind) (! bind))
+(def-thunk (! embed return bind) (! bind))
 
 ;; 2. Run
 ;; Cont (Eff X) X -o Eff X
-(def/copat (! run return bind th)
+(def-thunk (! run return bind th)
   (! th return))
 
 
@@ -170,7 +172,7 @@
 ;
 ;; Next, Algebras are closed under X' -> R
 ;; impl RelMonad Eff, Algebra Eff R => Algebra Eff (X' -> R) where
-(def/copat (! bindReader bindAlg ;; Algebra Eff R
+(def-thunk (! bindReader bindAlg ;; Algebra Eff R
               th ;; U(Eff X)
               readerK ;; X -> X' -> R
               x^) ;; X' -> R
@@ -184,7 +186,7 @@
 ;; relative monads, right?
 
 ;; forall Y:c. B ~~> 
-(def/copat (! bindForall
+(def-thunk (! bindForall
               bindB ; forall Y. Algebra Eff Y -> Algebra Eff B
               th ; U(Eff X)
               k ;; U(X -> forall Y. Algebra Eff Y -> B). 
@@ -234,27 +236,29 @@
 ;; Reader R B := R x UB if R is a cbv type
 ;; or should it be U(R & B) =~ UR x UB? 
 
-(def/copat (! forceReader (cons r th)) (! th))
-(def/copat (! applyReader f (cons r th))
+(def-thunk (! forceReader (cons r th)) (! th))
+(def-thunk (! applyReader f (cons r th))
   (ret (cons r (~ (! f (cons r th))))))
 
 ;; what is the "co-operation" that this allows?
 ;; read : Reader R B -> R or Reader R B -> F R if R is a val type
 
-(def/copat (! read-coop (cons r th)) (ret r))
+(def-thunk (! read-coop (cons r th)) (ret r))
 
 ;; iStream B := Streamof B := mu L. U(B & F(Streamof B)) =~ mu L. UB x UF(Streamof B)
-(def/copat (! force-iStream (cons th more)) (! th))
-(def/copat (! apply-iStream f (cons th more))
-  (! interleave (~ (! f th)) (~ (! <<v apply-iStream 'o more))))
 
-(def/copat (! interleave (cons x xs) (cons y ys))
+(def-thunk (! interleave (cons x xs) (cons y ys))
   (ret (cons x (~ (ret (cons y (~ (do [xs <- (! xs)] [ys <- (! ys)] (! interleave xs ys)))))))))
+
+(def-thunk (! force-iStream (cons th more)) (! th))
+(def-thunk (! apply-iStream f (cons th more))
+  (! interleave (~ (! f th)) (~ (! <<v apply-iStream 'o more))))
 
 ;; Stream B := UB x U(Stream B)
 
 (def-thunk (! force-Stream (cons hd tl)) (! hd))
-(def-thunk (! apply-Stream f str@(cons hd tl))
+#;
+(def-thunk (! apply-Stream f str)
   (ret (cons (~ (! f str)) (~ (! apply-Stream f tl)))))
 
 ;; A comonad coalgebra would be something that "implements" apply:
@@ -262,7 +266,7 @@
 ;;   apply : U(S -> Y) -> S -> F(W Y)
 
 ;; Are coalgebras closed under x?
-
+#;
 (def-thunk (! apply-x apply1 ; forall Y. U(S1 -> Y) -> S1 -> F(W Y)
               apply2         ; forall Y. U(S2 -> Y) -> S2 -> F(W Y)
               f ; U(S1 x S2 -> Y)
@@ -277,6 +281,7 @@
   (! apply .. g))
 
 ;; What about 1?
+#;
 (def-thunk (! apply-1 f ; U(W T -> Y)
               unit ; W T
               ) ; F(W Y)
@@ -284,15 +289,50 @@
 
 
 ;; What about 0?
-(def/copat (! apply-0 f)) ;; 0 -> Y
+#;(def-thunk (! apply-0 f)) ;; 0 -> Y
 
 ;; What about +?
 (def/copat (! apply-+ apply1 apply2 f)
-  [((cons (= 'inl) x1)) (! apply1 (~ f 'o 'inl) x1)]
-  [((cons (= 'inr) x2)) (! apply2 (~ f 'o 'inr) x2)])
+  [((cons (= 'inl) x1)) (! apply1 (~ (! f 'o 'inl)) x1)]
+  [((cons (= 'inr) x2)) (! apply2 (~ (! f 'o 'inr)) x2)])
 
 ;; This makes 
 
 ;; unlike monads, comonads don't have the same opportunities for
 ;; benefit from church encoding, but we can optimize a little by using
 ;; tuples rather than &
+
+;; Some potential comonads
+;; DiscardableThunk B := U (B & F1) =~ Ex X. U(X -o B & F1) ⊗ X =~ Ex X. U((X -o B) & (X -o F 1)) ⊗ X
+
+;; In the dual
+;; Discardable E B = B & F E
+;; Exn E B = B ⊕ (Kont E)
+;; dual of exception monad
+
+;; Claim: Discardable E is a comonad
+;; extract : Discardable E B -o B
+;; extend  : (Discardable E B -o B') -> Discardable E B -o Discardable E B'
+
+;; force : U(B & FE) -> B
+;; apply : U(U(B & F E) -> B') -> U(Discardable E B) ->
+
+(def-thunk (! force-discardable th) (! th 'cleanup))
+(def/copat (! apply-discardable thf thx)
+  [((= 'run))     (! thf thx)]
+  [((= 'cleanup)) (! thx 'cleanup)]) ;; this discards thf tho!
+;;
+;;;; Coinductive itree event result :=
+;; ret : r -> itree e r
+;; tau : itree e r -> itree e r
+;; emit : e a -> (a -> itree e r) -> itree e r
+
+;; codata Interactor e r where
+;;   delay : Interactor e r -> F (Itree e r)
+
+;; with
+;; data ITree e r where
+;;   ret  : r -> Itree e r
+;;   tau  : U(Interactor e r) -> Itree e r
+;;   emit : e a -> U(a -> Interactor e r) -> Itree e r
+
