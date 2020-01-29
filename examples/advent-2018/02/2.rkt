@@ -1,9 +1,9 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../table.rkt")
-(require "../CoList.rkt")
-(require "../IO.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/Table)
+(require sbpv/stdlib/CoList)
+(require sbpv/stdlib/IO)
 
 (define-thunk (! add1 x) (! + 1 x))
 (define-rec-thunk (! count-occs t s)
@@ -66,7 +66,7 @@
   (copat
    [(s) (! <<v pick-23s 'o count-occs empty-table 'o string->list s '$)]))
 (define-thunk (! main2-1)
-  (do [ls <- (! slurp-lines)]
+  (do [ls <- (! slurp-lines!)]
       [cts <- (! <<n add-23s 'o cl-map calc-23s 'o colist<-list ls '$)]
     (! apply * cts)))
 ;(! main2-1)
@@ -111,7 +111,7 @@
       [#:else (! search (cons hd seen) clines)])))
 
 (define-thunk (! main2-2)
-  (do [ls <- (! slurp-lines)]
+  (do [ls <- (! slurp-lines!)]
       [matches <-
        (! <<n search '() 'o cl-map string->list 'o colist<-list ls '$)]
     (! <<v
@@ -120,5 +120,5 @@
        filter (thunk (! apply equal?)) 'o
        apply (thunk (! zipwith List)) matches '$)))
 
-(! main2-2)
+;; (! main2-2)
 

@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
 (provide parse-num upper-case? lower-case? letter? UPPERS digit<-char
          slurp-satisfying)
 

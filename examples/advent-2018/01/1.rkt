@@ -1,9 +1,9 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../Set.rkt")
-(require "../Stream.rkt")
-(require "../Parse.rkt")
+(require sbpv/prelude)
+(require "../../Set.rkt")
+(require "../../Stream.rkt")
+(require "../../Parse.rkt")
 
 (define-thunk (! num<-sgn sgn)
   (ifc (! equal? #\+ sgn)
@@ -60,4 +60,4 @@
     [seen <- (! singleton 0)]
     (! search knotted 0 seen)
     ))
-(! part2)
+;; (! part2)

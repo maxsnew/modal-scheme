@@ -1,9 +1,10 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../Parse.rkt")
-(require "../IO.rkt")
-(require "../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
+(require sbpv/stdlib/IO)
+(require "../../Parse.rkt")
 
 ;; data Rectangle where
 ;;   '(rect id ,Num ,Coordinates ,Size)
@@ -113,7 +114,7 @@
        coords<-rect rect '$)]))
 
 (define-thunk (! main3-1)
-  (do [ls <- (! slurp-lines)]
+  (do [ls <- (! slurp-lines!)]
       [arr <- (! mk-region)]
       [_ <-
          (! <<n
@@ -133,11 +134,11 @@
      coords<-rect rect '$)]))
 
 (define-thunk (! main3-2)
-  (do [ls <- (! slurp-lines)]
+  (do [ls <- (! slurp-lines!)]
       [arr <- (! mk-region)]
     [rects <- (ret (thunk (! <<n cl-map parse-rect 'o colist<-list ls '$)))]
     [_ <- (! cl-foreach (thunk (! fill-region arr)) rects)]
     (! <<v
        clv-hd 'o 
        cl-filter (thunk (λ (rect) (! disjoint arr rect))) rects '$)))
-(! main3-2)
+;; (! main3-2)

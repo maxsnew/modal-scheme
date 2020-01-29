@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "stdlib.rkt")
+(require sbpv/prelude)
 
 ;; llsprintf
 ;; llsprintf (String|'%d|'%i)* $ arg* -> String
@@ -16,7 +16,7 @@
   (copat
    [((= prompt)) (! return acc)]
    [(x) (! cupto-loop prompt (cons x acc) return)]
-   [(#:bind) (error "I was supposed to find a prompt here!")]))
+   [(#:bind) (! error "I was supposed to find a prompt here!")]))
 
 (define-rec-thunk (! cupto prompt return)
   (! cupto-loop prompt '() return))

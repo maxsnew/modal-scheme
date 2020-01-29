@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
 (provide cycle stream-ref stream<-list stream<-colist
          stream-cons stream-const push-list
          take)

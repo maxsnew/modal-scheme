@@ -86,6 +86,7 @@
 (require-fo-wrapped-provide racket close-input-port)
 (require-fo-wrapped-provide racket/base read-line)
 (require-fo-wrapped-provide racket/base read-char)
+(require-fo-wrapped-provide racket/base read)
 (require-fo-wrapped-provide racket open-output-file)
 (require-fo-wrapped-provide racket close-output-port)
 (require-fo-wrapped-provide racket/base displayln)
@@ -261,7 +262,7 @@
 (define-typed-syntax (main e) ≫
   (⊢ e ≫ e- ⇐ computation)
   ----------------
-  (⊢ (let- ([x- e-]) x-) ⇒ computation))
+  (⊢ (let- ([x- e-]) (void)) ⇒ computation))
 
 (define-typed-syntax (typed-define x e) ≫
   (⊢ e ≫ e- ⇐ value)

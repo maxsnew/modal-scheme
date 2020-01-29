@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
+(require sbpv/prelude)
 
 ;; Let's write some cbpv interpreters in sbpv. Why interpreters?
 ;; Because they naturally lead to the use of user-defined effects, and

@@ -1,6 +1,6 @@
 #lang sbpv
 
-(require "stdlib.rkt")
+(require sbpv/prelude)
 ;; This looks like the definition of a stream, but because it's CBName
 ;; they are actually "batch"
 ;; A batch-stream (BS) is a computation with two methods:
@@ -11,8 +11,8 @@
 ; const-bs : /\ X (X -> BS[X])
 (define-rec-thunk (! const-bs x)
   (copat
-   [('hd #:bind) (ret x)]
-   [('tl) (! const-bs x)]))
+   [((= 'hd) #:bind) (ret x)]
+   [((= 'tl)) (! const-bs x)]))
 
 ;; A resumable batch-stream RBS has a third method:
 ;;   #:bind |- F (U (RBS))
@@ -25,8 +25,8 @@
 (define-rec-thunk (! const-rbs x)
   (copat
    [(#:bind) (ret (thunk (! const-rbs x)))]
-   [('hd #:bind) (ret x)]
-   [('tl) (! const-rbs x)]))
+   [((= 'hd) #:bind) (ret x)]
+   [((= 'tl)) (! const-rbs x)]))
 
 ;; TODO: n-ary map
 ;; (X -> F Y) 
@@ -35,8 +35,8 @@
    [(#:bind)
     (do [str^ <- (! str)]
         (ret (thunk (! map f str^))))]
-   [('hd #:bind) (! .v f str 'hd)]
-   [('tl) (! map f (thunk (! str 'tl)))]))
+   [((= 'hd) #:bind) (! .v f str 'hd)]
+   [((= 'tl)) (! map f (thunk (! str 'tl)))]))
 
 (do [fives <- (! const-rbs 5)]
     [tens  <- (! map (thunk (λ (x) (! + x x))) fives)]

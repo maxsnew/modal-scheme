@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../stdlib.rkt")
-(require "CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
 
 (provide mt-flexvec flexvec<-list)
 
@@ -34,7 +34,7 @@
         [(! ft-mt? x) (ret 0)]
         [(! ft-single? x) (! <<v size 'o ft-single-val x)]
         [(! ft-deep?   x) (! deep-size x)]
-        [else (error x)]))
+        [else (! error x)]))
 
 (def/copat (! mk-node)
   [(x y z) [sz <- (! <<v foldl^ + 0 'o map size (list x y z))]
