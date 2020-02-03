@@ -3,6 +3,7 @@
 (require (for-syntax syntax/parse
                      (except-in racket/base quote)
                      (only-in "main.rkt" quote)))
+
 (provide Y do do^ ifc define-rec-thunk define-thunk def-thunk def/copat
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth fifth sixth empty? rest grab-stack dot-args
@@ -274,9 +275,14 @@
 ;;   'any-stack -- matches any stack, binds no variables
 ;;   'rest -- matches any stack, but grabs the rest of the stack into a list
 ;;   (list 'upto lit copat) -- grabs the stack upto lit as a list, then proceeds as copat
+;;   (list 'keyword kw pat copat) -- matches pat on the contents of the kw register, failing if the register is not set
 (define-thunk (! end-copat? copat) (! equal? copat 'end))
 (define-thunk (! any-stack-copat? copat) (! equal? copat 'any-stack))
 (define-thunk (! rest-copat? copat) (! equal? copat 'rest))
+(define-thunk (! keyword-copat? copat)
+  (! and (~ (! cons? copat))
+     (~ (do [tg <- (! first copat)]
+            (! equal? tg 'keyword)))))
 (define-thunk (! arg-copat? copat)
   (! and
      (~ (! cons? copat))
@@ -328,6 +334,13 @@
       (do [tag <- (! car pat)]
           (! equal? 'upto tag)))))
 
+(define-thunk (! kw-syn? pat)
+  (! and
+     (thunk (! cons? pat))
+     (thunk
+      (do [tag <- (! car pat)]
+          (! equal? 'keyword tag)))))
+
 ;; Parses one level of macro syntax for a copattern into a copattern
 (define-rec-thunk (! view-copat syn)
   (cond
@@ -340,7 +353,13 @@
          [(! upto-syn? hd)
           (do [sigil <- (! second hd)]
               (! List 'upto sigil tl))]
-         [#:else (! List 'arg hd tl)]))]))
+         [(! kw-syn? hd)
+          (do [kw  <- (! second hd)]
+              [pat <- (! third hd)]
+              (! List 'keyword kw pat tl))]
+         ;; this is very bad(!!!!!!!!!!! TODO: fixme this is exploitable I think to get weird errors
+         [#:else (! List 'arg hd tl)]
+         ))]))
 
 ;; captures up to lit. match-k should take an abort-k argument and a list
 (define-rec-thunk (! up-to-lit match-k abort-k lit seen)
@@ -371,6 +390,17 @@
                  (λ (abort-k xs)
                    (! copat-match (~ (! match-k xs)) abort-k tl-copat)))
                 abort-k sigil '())]
+            [(! keyword-copat? copat)
+             [kw <- (! second copat)]
+             [pat <- (! third copat)]
+             [copat <- (! fourth copat)]
+             (kw-case-λ
+              [(kw x)
+               ; we need to restore the register if we abort
+               (! copat-match match-k (~ (λ (x) (^: (! abort-k) kw x)))   
+                  (cons pat copat)
+                  x)]
+              [() (! abort-k)])]
             [(! arg-copat? copat)
              [pat <- (! second copat)]
              [copat <- (! third copat)]
@@ -501,6 +531,10 @@
      ((~literal upto) xs:id e:expr)
      #:attr pattern #`(list 'upto e)
      #:attr all-vars #'(xs))
+    (pattern
+     (k:keyword p:pat)
+     #:attr pattern #`(list 'keyword (quote k) p.pattern)
+     #:attr all-vars #`#,(syntax-e #`p.all-vars))
     (pattern
      ((~literal rest) xs:id)
      #:attr pattern #`'rest

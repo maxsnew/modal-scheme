@@ -1,8 +1,14 @@
 #lang racket/base
 
 (provide (struct-out foreign)
-         rkt->sbpv sbpv->rkt fo-rkt->sbpv st)
-(define st (box '()))
+         stack regs
+         rkt->sbpv sbpv->rkt fo-rkt->sbpv)
+
+;; This is the *stack*, implemented as a mutable pointer to a list
+(define stack (box '()))
+;; This is the *register file*, implemented as a mutable hash table
+;; kw -o> val
+(define regs (make-hash))
 
 (struct foreign (payload))
 
@@ -12,7 +18,8 @@
       (string? x)
       (symbol? x)
       (null? x)
-      (char? x)))
+      (char? x)
+      (keyword? x)))
 ;; rkt->sbpv
 
 ;; wraps first-order functions from racket to sbpv
@@ -20,8 +27,8 @@
   (cond
     [(procedure? x)
      (λ ()
-       (define args (unbox st))
-       (set-box! st '())
+       (define args (unbox stack))
+       (set-box! stack '())
        (apply x args))]
     [else (error 'fo-rkt->sbpv-is-for-fo-funs)]))
 
@@ -32,8 +39,8 @@
     [(pair? x) (cons (rkt->sbpv (car x)) (rkt->sbpv (cdr x)))]
     [(procedure? x)
      (λ ()
-       (define args (unbox st))
-       (set-box! st '())
+       (define args (unbox stack))
+       (set-box! stack '())
        (rkt->sbpv (apply x (map sbpv->rkt args))))]
     [else (foreign x)]))
 
@@ -46,7 +53,7 @@
     [(foreign? x) (foreign-payload x)]
     [(procedure? x)
      (λ args       
-       (set-box! st (map rkt->sbpv args))
+       (set-box! stack (map rkt->sbpv args))
        (sbpv->rkt (x)))]))
 
 (module+ test

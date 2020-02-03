@@ -1,7 +1,8 @@
 #lang turnstile
 
 ;; A CBPV Scheme-like
-;;
+;; 
+;; See initialize.rkt for a description of the runtime state
 (require (rename-in racket/function (thunk thunk-))
          "initialize.rkt"
          (for-syntax syntax/parse))
@@ -158,7 +159,7 @@
   (⊢ e ≫ e- ⇐ value)
   ----------------
   (⊢
-   (let- ([x (unbox- st)])
+   (let- ([x (unbox- stack)])
      (if- (null?- x)
           e-
           (error- (format "expected a return address on the stack but got stack ~a" x))))
@@ -169,10 +170,10 @@
   ((x ≫ x- : value) ⊢ e^ ≫ e^- ⇐ computation)
   -----------------
   (⊢ (let- ()
-       (define tmp (unbox- st)) ;; Save the current stack
-       (set-box!- st '())       ;; Hide the stack from e
+       (define tmp (unbox- stack)) ;; Save the current stack
+       (set-box!- stack '())       ;; Hide the stack from e
        (define x- e-)          ;; run e
-       (set-box!- st tmp)       ;; restore the stack
+       (set-box!- stack tmp)       ;; restore the stack
        e^-)
      ⇒ computation))
 
@@ -221,18 +222,17 @@
   ------------------------
   (≻ (many-app (basic-! e) es ...)))
 
-
 (define-typed-syntax (case-λ [(#:bind) e] [(x:id) ex]) ≫
   (⊢ e ≫ e- ⇐ computation)
   ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
   --------------------------------
   (⊢ (let- ()
-       (define- cur (unbox- st))
+       (define- cur (unbox- stack))
        (cond-
          [(null?- cur) e-]
          [else
           (define- x- (car- cur))
-          (set-box!- st (cdr- cur))
+          (set-box!- stack (cdr- cur))
           ex-]))
      ⇒ computation))
 
@@ -241,14 +241,54 @@
   (⊢ e2 ≫ e2- ⇐ value)
   ----------------
   (⊢ (let- ()
-           (set-box!- st (cons- e2- (unbox- st)))
+           (set-box!- stack (cons- e2- (unbox- stack)))
            e1-)
      ⇒ computation))
+
+;; what should be the semantics here?
+;; either overwrite the register regardless of if it's set
+;; or fail if it's already set
+(define-typed-syntax (^: e1 k e2) ≫
+  (⊢ e1 ≫ e1- ⇐ computation)
+  (⊢ k ≫ k- ⇐ value)
+  (⊢ e2 ≫ e2- ⇐ value)
+  ----------------
+  (⊢ (let- ()
+           (unless- (keyword?- k-)
+                    (error- (format "expected a keyword to assign, but got ~a" k-)))
+           (hash-set!- regs k- e2-)
+           e1-)
+     ⇒ computation))
+
+(define-typed-syntax kw-case-λ
+  [(_ [(k:keyword x:id) esucc] [() eelse]) ≫
+   --------------------
+   [≻ (kw-case-λ [((quoth k) x) esucc] [() eelse])]]
+  [(_ [(k x:id) esucc] [() eelse]) ≫
+   ((x ≫ x- : value) ⊢ esucc ≫ esucc- ⇐ computation)
+   (⊢ k ≫ k- ⇐ value)
+   (⊢ eelse ≫ eelse- ⇐ computation)
+   ----------------------------------
+   (⊢
+    (cond-
+     [(hash-has-key?- regs k-)         ;; if the register is set
+      (define- x- (hash-ref- regs k-)) ;; bind its value to x
+      (hash-remove!- regs k-)          ;; and unset it
+      esucc-]
+     [(keyword?- k-) eelse-]
+     [else
+      (error- (format "expected a keyword to match on, but got ~a" k-))])
+    ⇒ computation)])
 
 (define-typed-syntax many-app
   [(_ e) ≫
    -------
    [≻ e]]
+
+  [(_ e k:keyword x xs ...) ≫
+   ---------------------------
+   [≻ (many-app (^: e (quoth k) x) xs ...)]]
+  
   [(_ e x xs ...) ≫
    -----------------
    [≻ (many-app (^ e x) xs ...)]])
@@ -298,4 +338,8 @@
   (check-type (! 3) : computation)
   (check-type (many-app (! 3) 4) : computation)
   (check-type (many-app (! 3) 4 5 6) : computation)
+  (check-type (kw-case-λ
+               [(#:test x) (ret #t)]
+               [() (ret #f)])
+              : computation)
   )
