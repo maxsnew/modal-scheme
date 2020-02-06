@@ -1,10 +1,10 @@
 #lang sbpv
 
-(require "../../../stdlib.rkt")
-(require "../../IO.rkt")
-(require "../../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
 (require "../../Parse.rkt")
-(require "../../table.rkt")
+(require sbpv/stdlib/Table)
 
 (require "../Intcode.rkt")
 (require "../Coordinates.rkt")

@@ -1,7 +1,7 @@
 #lang sbpv
 
-(require "../../stdlib.rkt"
-         "../CoList.rkt")
+(require sbpv/prelude
+         sbpv/stdlib/CoList)
 (provide mk-coord x-coord y-coord scale coord-add
          pt<-ix ix<-pt
 
