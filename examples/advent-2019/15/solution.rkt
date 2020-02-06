@@ -170,7 +170,7 @@
 (def-thunk (! main-a)
   [syn <- (! parse-intcode-program "input")]
   [driver <- (! initialize-driver-a )]
-  (! interp-intcode-program syn driver))
+  (! <<v displayall 'o interp-intcode-program syn driver))
 
 (def-thunk (! maximum x y)
   (cond [(! < x y) (ret y)]
@@ -253,4 +253,4 @@
 (def-thunk (! main-b)
   [syn <- (! parse-intcode-program "input")]
   [driver <- (! initialize-driver-b)]
-  (! interp-intcode-program syn driver))
+  (! <<v displayall 'o interp-intcode-program syn driver))
