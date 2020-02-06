@@ -151,8 +151,7 @@
 ;;
 ;; /Cont : Monad -> Cat
 ;; is equivalent to EM?
-
-
+;;
 ;; 1. For every monad Eff and val type X, there is a monad morphism
 ;; Eff - -o Cont (Eff X)
 ;; because this is equivalent to
@@ -164,7 +163,6 @@
 ;; Cont (Eff X) X -o Eff X
 (def-thunk (! run return bind th)
   (! th return))
-
 
 ;; Back to algebras
 ;; First, clearly bind itself exhibits that Eff X' is an algebra for any X'
@@ -262,8 +260,22 @@
   (ret (cons (~ (! f str)) (~ (! apply-Stream f tl)))))
 
 ;; A comonad coalgebra would be something that "implements" apply:
-;; class Comonad W => Algebra W (S : v) where
+;; class Comonad W => CoAlgebra W (S : v) where
 ;;   apply : U(S -> Y) -> S -> F(W Y)
+
+;; Note that this is the same as
+;; (U(S -> Y) x S) => W Y
+;; =~ Store S => W
+
+;; where Store S = U(S -> Y) x S
+;; is the "store" comonad/costate
+;
+;; Note that we can define
+;;   UB = exists X. Store X B
+;; from the store comonad if it were somehow
+
+;; Store S1 S2 Y = S1 x U(S2 -> Y)
+;; Cont  R1 R2 X = U(X -> R1) -> R2
 
 ;; Are coalgebras closed under x?
 #;
@@ -336,3 +348,10 @@
 ;;   tau  : U(Interactor e r) -> Itree e r
 ;;   emit : e a -> U(a -> Interactor e r) -> Itree e r
 
+;; If
+;   Cont R A = U(A -> R) -> R
+;; is the mother of all (relative) monads in that
+;; Alg T B =~ T -o Cont R
+;
+
+;; 
