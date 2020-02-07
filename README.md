@@ -1,4 +1,4 @@
-# SBPV
+# SBPV [![Build Status](https://travis-ci.org/maxsnew/modal-scheme.svg?branch=master)](https://travis-ci.org/maxsnew/modal-scheme)
 
 This repo contains an experimental implementation of a dynamically
 typed version of Levy's Call-by-push-value (CBPV), which I'm currently

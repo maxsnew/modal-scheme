@@ -1,6 +1,5 @@
 #lang scribble/manual
-@require[@for-label[sbpv
-                    racket/base]]
+@(require (for-label sbpv))
 
 @title{sbpv}
 @author{max}

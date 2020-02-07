@@ -1,0 +1,29 @@
+language: c
+sudo: false
+env:
+  global:
+    - RACKET_DIR=~/racket
+  matrix:
+    - RACKET_VERSION="7.0"
+    - RACKET_VERSION="7.1"
+    - RACKET_VERSION="7.2"
+    - RACKET_VERSION="7.3"
+    - RACKET_VERSION="7.4"
+    - RACKET_VERSION="7.5"
+    - RACKET_VERSION="HEAD"
+matrix:
+  allow_failures:
+    - env: RACKET_VERSION="HEAD"
+
+before_install:
+  - git clone https://github.com/greghendershott/travis-racket.git ../travis-racket
+  - cat ../travis-racket/install-racket.sh | bash
+  - export PATH="${RACKET_DIR}/bin:${PATH}"
+
+install:
+ - raco pkg install --auto sbpv/
+
+script:
+ - raco test --timeout 120 sbpv/
+ - raco test --timeout 120 examples/
+ - raco setup
