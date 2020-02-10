@@ -1,11 +1,11 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../IO.rkt")
-(require "../Parse.rkt")
-(require "../Stream.rkt")
-(require "../CoList.rkt")
-(require "../table.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require "../../Parse.rkt")
+(require "../../Stream.rkt")
+(require sbpv/stdlib/CoList)
+(require sbpv/stdlib/Table)
 (provide main-a main-b)
 
 (define-thunk (! list-ref l n)
@@ -19,8 +19,6 @@
       (! cl-foldl^ * e))]))
 
 ;; A Monoid for a type A is a (list (A -> A -> F A) A)
-
-
 
 (define-thunk (! parse-entry)
   (copat
@@ -155,7 +153,7 @@
     (ret bst*time)))
 
 (define-thunk (! main-a)
-  (do [l <- (! slurp-lines)]
+  (do [l <- (! slurp-lines!)]
       [l <- (! <<v map (thunk (! apply parse-entry)) 'o map string->list l '$)]
     [es <- (! <<v group-entries 'o sort l rec< '$)]
     [id->naps
@@ -172,10 +170,10 @@
     [naps  <- (! id->naps 'get big-sleeper #f)]
     [best <- (! <<v first 'o best-minute naps '$)]
     [chksum <- (! * best big-sleeper)]
-    (ret (list 'part 'a ': 'id big-sleeper '* 'minute best '= chksum))))
+    (! displayall (list 'part 'a ': 'id big-sleeper '* 'minute best '= chksum))))
 
 (define-thunk (! main-b)
-  (do [l <- (! slurp-lines)]
+  (do [l <- (! slurp-lines!)]
       [l <- (! <<v map (thunk (! apply parse-entry)) 'o map string->list l '$)]
     [es <- (! <<v group-entries 'o sort l rec< '$)]
     [id->naps
@@ -190,6 +188,6 @@
          colist<-list id*naps '$)]
     [id <- (! first id*best)] [best <- (! second id*best)]
     [chksum <- (! <<v * id 'o first best '$)]
-    (ret (list 'part 'b ': 'id id '* 'minute best '= chksum))))
+    (! displayall (list 'part 'b ': 'id id '* 'minute best '= chksum))))
 
 

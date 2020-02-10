@@ -1,10 +1,10 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../IO.rkt")
-(require "../CoList.rkt")
-(require "../Parse.rkt")
-(require "../table.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
+(require "../../Parse.rkt")
+(require sbpv/stdlib/Table)
 
 (provide main-a main-b)
 
@@ -40,7 +40,7 @@
 
 ;; FU CoList (List ID Pt)
 (def-thunk (! parse-input)
-  [ls <- (! slurp-lines)]
+  [ls <- (! slurp-lines!)]
   [parsed = (~ (! <<n cl-map parse-line 'o colist<-list ls))]
   [id*pts <- (! <<n list<-colist 'o
                 cl-zipwith (~ (! range 0 1000000000)) parsed

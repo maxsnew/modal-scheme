@@ -1,8 +1,8 @@
 #lang sbpv
 
-(require "../../../stdlib.rkt")
-(require "../../IO.rkt")
-(require "../../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
 (require "../../Parse.rkt")
 (require "../../Set.rkt")
 
@@ -125,11 +125,11 @@
   [x-sys <- (! sub-input first input)]
   [y-sys <- (! sub-input second input)]
   [z-sys <- (! sub-input third input)]
-  [x-rep <- 186028 ;; computed already
+  [x-rep <- (ret 186028) ;; computed already
          ;(! <<n find-repeat second 'o numbered 'o simulate-system x-sys '$)
          ]
   (! displayall x-rep)
-  [y-rep <- 56344
+  [y-rep <- (ret 56344)
          ; (! <<n find-repeat second 'o numbered 'o simulate-system y-sys '$)
          ]
   (! displayall y-rep)

@@ -1,9 +1,9 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../CoList.rkt")
-(require "../Stream.rkt")
-(require "../Finger.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/CoList)
+(require "../../Stream.rkt")
+(require "../../Finger.rkt")
 
 (provide main-a)
 
@@ -30,7 +30,7 @@
     (ret (~ (! zippy-circle flex size cursor)))]
    [((= 'add) x)
     (cond
-      [(! >= cursor size) (error "too big")]
+      [(! >= cursor size) (! error "too big")]
       [else
        ;(! displayln 'add)
        [flex <- (! flex 'insert cursor x)]

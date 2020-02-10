@@ -1,11 +1,11 @@
 #lang sbpv
 
-(require "../../../stdlib.rkt")
-(require "../../IO.rkt")
-(require "../../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
 (require "../../Parse.rkt")
-(require "../../table.rkt")
-(require "../../set.rkt")
+(require sbpv/stdlib/Table)
+(require "../../Set.rkt")
 
 (provide main-a main-b)
 
@@ -21,7 +21,7 @@
 ;; morphism Ore^n -> FUEL
 ;
 ;; It is semi-cartesian because we allow weakening: our final reaction
-;; can have discard unused by-products.
+;; can have unused by-products.
 ;
 ;; There are some simplifying assumptions that make this easier than
 ;; the general case. First, the generators always output 1 sort of

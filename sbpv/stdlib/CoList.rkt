@@ -18,7 +18,7 @@
          maximum
 
          take-while
-         cycle
+         cl-cycle
          first-such-that
 
          member?
@@ -199,8 +199,8 @@
   [(l) (! <<n cl-append l 'o cl-append*)])
 
 ;; cycle
-(def-thunk (! cycle cl)
-  (! cl-append cl (~ (! cycle cl))))
+(def-thunk (! cl-cycle cl)
+  (! cl-append cl (~ (! cl-cycle cl))))
 
 
 ;; cl-bind : CoList A -> (A -> CoList A') -> CoList A'

@@ -1,10 +1,10 @@
 #lang sbpv
 
-(require "../../../stdlib.rkt")
-(require "../../IO.rkt")
-(require "../../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
 (require "../../Parse.rkt")
-(require "../../FlexVec.rkt")
+(require sbpv/stdlib/FlexVec)
 (require "../Intcode.rkt")
 
 (provide main-a main-b)

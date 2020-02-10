@@ -1,11 +1,11 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../IO.rkt")
-(require "../CoList.rkt")
-(require "../Set.rkt")
-(require "../table.rkt")
-(require "../Parse.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
+(require "../../Set.rkt")
+(require sbpv/stdlib/Table)
+(require "../../Parse.rkt")
 
 (provide main-a main-b)
 

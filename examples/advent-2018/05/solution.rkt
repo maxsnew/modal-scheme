@@ -1,9 +1,9 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../IO.rkt")
-(require "../Parse.rkt")
-(require "../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require "../../Parse.rkt")
+(require sbpv/stdlib/CoList)
 (provide main-a main-b)
 
 (define-thunk (! log x)

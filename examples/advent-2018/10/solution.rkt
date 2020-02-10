@@ -1,15 +1,15 @@
 #lang sbpv
 
-(require "../../stdlib.rkt")
-(require "../IO.rkt")
-(require "../CoList.rkt")
-(require "../Parse.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
+(require "../../Parse.rkt")
 
 (provide main-a main-b)
 
 (def-thunk (! assert th msg)
   (cond [(! th) (ret '())]
-        [else (error msg)]))
+        [else (! error msg)]))
 
 ;; A Position is a (List 'position (List Int Int))
 (def-thunk (! pos-x) (! <<v first  'o second))

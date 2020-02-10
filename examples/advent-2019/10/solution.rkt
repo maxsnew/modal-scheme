@@ -1,8 +1,8 @@
 #lang sbpv
 
-(require "../../../stdlib.rkt")
-(require "../../IO.rkt")
-(require "../../CoList.rkt")
+(require sbpv/prelude)
+(require sbpv/stdlib/IO)
+(require sbpv/stdlib/CoList)
 (require "../../Parse.rkt")
 (require "../Coordinates.rkt")
 
@@ -184,7 +184,7 @@
   [smap <- (! slurp-map)]
   [src <- (! mk-coord 8 16)]
   [angle-list <- (! all-angles smap src)]
-  [vaporized-asteroids = (~ (! <<n vaporize-loop smap src 'o cycle (~ (! colist<-list angle-list)) '$))]
+  [vaporized-asteroids = (~ (! <<n vaporize-loop smap src 'o cl-cycle (~ (! colist<-list angle-list)) '$))]
   (! <<n cl-foreach displayall 'o cl-zipwith vaporized-asteroids 'o range 1 201 '$))
 
 ;; cartesian x y to polar is

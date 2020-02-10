@@ -543,7 +543,12 @@
      ((~literal cons) car:pat cdr:pat)
      #:attr pattern #`(list 'cons car.pattern cdr.pattern)
      #:attr all-vars #`#,(append (syntax-e #`car.all-vars)
-                                 (syntax-e #`cdr.all-vars))))
+                                 (syntax-e #`cdr.all-vars)))
+    (pattern
+     (~or e:boolean e:char e:number e:string)
+     #:attr pattern #`(list 'lit e)
+     #:attr all-vars #'())
+)
   (define-syntax-class copat
     #:attributes (patterns vars)
     (pattern
