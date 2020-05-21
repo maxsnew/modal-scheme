@@ -1,6 +1,6 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
+(require fiddle/prelude)
 
 ;; llsprintf
 ;; llsprintf (String|'%d|'%i)* $ arg* -> String

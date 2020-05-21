@@ -1,6 +1,6 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
+(require fiddle/prelude)
 
 ;; In Haskell, we are used to simulating call-by-value effects using
 ;; *monads*

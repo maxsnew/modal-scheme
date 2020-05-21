@@ -1,7 +1,7 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/CoList)
+(require fiddle/prelude)
+(require fiddle/stdlib/CoList)
 (provide cycle stream-ref stream<-list stream<-colist
          stream-cons stream-const push-list
          take)

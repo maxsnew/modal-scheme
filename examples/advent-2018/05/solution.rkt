@@ -1,9 +1,9 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/IO)
+(require fiddle/prelude)
+(require fiddle/stdlib/IO)
 (require "../../Parse.rkt")
-(require sbpv/stdlib/CoList)
+(require fiddle/stdlib/CoList)
 (provide main-a main-b)
 
 (define-thunk (! log x)

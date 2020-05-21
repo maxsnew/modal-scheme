@@ -1,6 +1,6 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
+(require fiddle/prelude)
 ;; This looks like the definition of a stream, but because it's CBName
 ;; they are actually "batch"
 ;; A batch-stream (BS) is a computation with two methods:

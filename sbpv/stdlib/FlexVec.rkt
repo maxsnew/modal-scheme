@@ -1,7 +1,7 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/CoList)
+(require fiddle/prelude)
+(require fiddle/stdlib/CoList)
 (provide mutable-flexvec<-list mk-mutable-flexvec initialize-memory)
 
 ;; A FlexVec A is a codata type implementing

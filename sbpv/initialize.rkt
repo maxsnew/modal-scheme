@@ -2,7 +2,7 @@
 
 (provide (struct-out foreign)
          stack regs
-         rkt->sbpv sbpv->rkt fo-rkt->sbpv)
+         rkt->fiddle fiddle->rkt fo-rkt->fiddle)
 
 ;; This is the *stack*, implemented as a mutable pointer to a list
 (define stack (box '()))
@@ -12,7 +12,7 @@
 
 (struct foreign (payload))
 
-(define (sbpv-datum? x)
+(define (fiddle-datum? x)
   (or (boolean? x)
       (number? x)
       (string? x)
@@ -20,47 +20,47 @@
       (null? x)
       (char? x)
       (keyword? x)))
-;; rkt->sbpv
+;; rkt->fiddle
 
-;; wraps first-order functions from racket to sbpv
-(define (fo-rkt->sbpv x)
+;; wraps first-order functions from racket to fiddle
+(define (fo-rkt->fiddle x)
   (cond
     [(procedure? x)
      (λ ()
        (define args (unbox stack))
        (set-box! stack '())
        (apply x args))]
-    [else (error 'fo-rkt->sbpv-is-for-fo-funs)]))
+    [else (error 'fo-rkt->fiddle-is-for-fo-funs)]))
 
-;; racket value -> sbpv value
-(define (rkt->sbpv x)
+;; racket value -> fiddle value
+(define (rkt->fiddle x)
   (cond
-    [(sbpv-datum? x) x]
-    [(pair? x) (cons (rkt->sbpv (car x)) (rkt->sbpv (cdr x)))]
+    [(fiddle-datum? x) x]
+    [(pair? x) (cons (rkt->fiddle (car x)) (rkt->fiddle (cdr x)))]
     [(procedure? x)
      (λ ()
        (define args (unbox stack))
        (set-box! stack '())
-       (rkt->sbpv (apply x (map sbpv->rkt args))))]
+       (rkt->fiddle (apply x (map fiddle->rkt args))))]
     [else (foreign x)]))
 
-;; sbpv->rkt
-(define (sbpv->rkt x)
+;; fiddle->rkt
+(define (fiddle->rkt x)
   (cond
-    [(sbpv-datum? x) x]
-    [(pair? x) (cons (sbpv->rkt (car x))
-                     (sbpv->rkt (cdr x)))]
+    [(fiddle-datum? x) x]
+    [(pair? x) (cons (fiddle->rkt (car x))
+                     (fiddle->rkt (cdr x)))]
     [(foreign? x) (foreign-payload x)]
     [(procedure? x)
      (λ args       
-       (set-box! stack (map rkt->sbpv args))
-       (sbpv->rkt (x)))]))
+       (set-box! stack (map rkt->fiddle args))
+       (fiddle->rkt (x)))]))
 
 (module+ test
   (require rackunit)
-  (check-equal? (sbpv->rkt #t) #t)
-  (check-equal? (rkt->sbpv #t) #t)
+  (check-equal? (fiddle->rkt #t) #t)
+  (check-equal? (rkt->fiddle #t) #t)
   
-  (check-equal? ((sbpv->rkt (rkt->sbpv list)) 1 2 3) '(1 2 3))
-  (check-equal? ((sbpv->rkt (rkt->sbpv (λ args (reverse args)))) 1 2 3) '(3 2 1)))
+  (check-equal? ((fiddle->rkt (rkt->fiddle list)) 1 2 3) '(1 2 3))
+  (check-equal? ((fiddle->rkt (rkt->fiddle (λ args (reverse args)))) 1 2 3) '(3 2 1)))
 

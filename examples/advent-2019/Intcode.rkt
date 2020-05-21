@@ -1,9 +1,9 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/IO)
-(require sbpv/stdlib/CoList)
-(require sbpv/stdlib/FlexVec)
+(require fiddle/prelude)
+(require fiddle/stdlib/IO)
+(require fiddle/stdlib/CoList)
+(require fiddle/stdlib/FlexVec)
 (require "../Parse.rkt")
 
 (provide parse-intcode-program

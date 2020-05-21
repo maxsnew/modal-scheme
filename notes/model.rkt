@@ -2,7 +2,7 @@
 
 (require redex)
 
-(define-language sbpv
+(define-language fiddle
   [v ::= boolean string (cons v v) nil (thunk e) (fix x e)]
   [e ::= (! v)
      (symbol=? v v)
@@ -29,14 +29,14 @@
     [nil e]
     [symbol e]
     [thunk e]))
-(define-metafunction sbpv
+(define-metafunction fiddle
   sym=? : symbol symbol -> boolean
   [(sym=? string_1 string_2)
    ,(string=? (term string_1) (term string_2))])
 
 (define red
   (reduction-relation
-   sbpv
+   fiddle
    #:domain e
    (--> (in-hole s (! (thunk e)))
         (in-hole s e)

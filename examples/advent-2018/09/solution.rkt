@@ -1,7 +1,7 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/CoList)
+(require fiddle/prelude)
+(require fiddle/stdlib/CoList)
 (require "../../Stream.rkt")
 (require "../../Finger.rkt")
 

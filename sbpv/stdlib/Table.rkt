@@ -1,6 +1,6 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
+(require fiddle/prelude)
 (provide update update^ empty-table table<-hash)
 
 ;; codata Table K V where

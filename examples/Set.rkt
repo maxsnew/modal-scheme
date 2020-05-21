@@ -1,6 +1,6 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
+(require fiddle/prelude)
 
 (provide set<-hash set<-list empty-set set-single)
 

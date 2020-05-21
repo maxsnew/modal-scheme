@@ -1,9 +1,9 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/Table)
-(require sbpv/stdlib/CoList)
-(require sbpv/stdlib/IO)
+(require fiddle/prelude)
+(require fiddle/stdlib/Table)
+(require fiddle/stdlib/CoList)
+(require fiddle/stdlib/IO)
 
 (define-thunk (! add1 x) (! + 1 x))
 (define-rec-thunk (! count-occs t s)

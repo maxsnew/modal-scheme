@@ -1,11 +1,11 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/IO)
+(require fiddle/prelude)
+(require fiddle/stdlib/IO)
 (require "../../Parse.rkt")
 (require "../../Stream.rkt")
-(require sbpv/stdlib/CoList)
-(require sbpv/stdlib/Table)
+(require fiddle/stdlib/CoList)
+(require fiddle/stdlib/Table)
 (provide main-a main-b)
 
 (define-thunk (! list-ref l n)

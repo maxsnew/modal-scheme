@@ -1,9 +1,9 @@
 #lang scribble/manual
-@(require (for-label sbpv))
+@(require (for-label fiddle))
 
-@title{sbpv}
+@title{fiddle}
 @author{max}
 
-@defmodule[sbpv]
+@defmodule[fiddle]
 
 Package Description Here

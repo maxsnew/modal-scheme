@@ -21,7 +21,7 @@
      #:with x-wrapped (generate-temporary #'x)
      #'(begin-
          (require (only-in lib [x x-tmp]))
-         (define x-wrapped (rkt->sbpv x-tmp))
+         (define x-wrapped (rkt->fiddle x-tmp))
          (define-primop x x-wrapped : value)
          (provide x))]))
 (define-syntax (require-fo-wrapped-provide stx)
@@ -31,7 +31,7 @@
      #:with x-wrapped (generate-temporary #'x)
      #'(begin-
          (require (only-in lib [x x-tmp]))
-         (define x-wrapped (fo-rkt->sbpv x-tmp))
+         (define x-wrapped (fo-rkt->fiddle x-tmp))
          (define-primop x x-wrapped : value)
          (provide x))]))
 
@@ -42,7 +42,7 @@
      #:with x-wrapped (generate-temporary #'x)
      #'(begin-
          (require (only-in lib [x x-tmp]))
-         (define x-wrapped (rkt->sbpv x-tmp))
+         (define x-wrapped (rkt->fiddle x-tmp))
          (define-primop x x-wrapped : value))]))
 #;
 (define-syntax (from-racket stx)

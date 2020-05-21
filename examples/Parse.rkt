@@ -1,7 +1,7 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/CoList)
+(require fiddle/prelude)
+(require fiddle/stdlib/CoList)
 (provide parse-num upper-case? lower-case? letter? UPPERS digit<-char
          slurp-satisfying)
 

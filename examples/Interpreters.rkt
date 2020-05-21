@@ -1,8 +1,8 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
+(require fiddle/prelude)
 
-;; Let's write some cbpv interpreters in sbpv. Why interpreters?
+;; Let's write some cbpv interpreters in fiddle. Why interpreters?
 ;; Because they naturally lead to the use of user-defined effects, and
 ;; we want to figure out what a good abstraction of effects is in
 ;; CBPV.

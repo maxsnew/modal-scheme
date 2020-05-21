@@ -3,7 +3,7 @@
 * TODO Overall
   1. [-] Make a #lang
      1. [X] define works
-     2. [ ] require across sbpv modules
+     2. [ ] require across fiddle modules
      3. [ ] require/provide with Racket, wrapped
      4. [ ] macros work
   2. [ ] New name

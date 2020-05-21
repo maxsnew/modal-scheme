@@ -1,10 +1,10 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude)
-(require sbpv/stdlib/IO)
-(require sbpv/stdlib/CoList)
+(require fiddle/prelude)
+(require fiddle/stdlib/IO)
+(require fiddle/stdlib/CoList)
 (require "../../Set.rkt")
-(require sbpv/stdlib/Table)
+(require fiddle/stdlib/Table)
 (require "../../Parse.rkt")
 
 (provide main-a main-b)

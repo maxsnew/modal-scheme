@@ -21,9 +21,9 @@ before_install:
   - export PATH="${RACKET_DIR}/bin:${PATH}"
 
 install:
- - raco pkg install --auto sbpv/
+ - raco pkg install --auto fiddle/
 
 script:
- - raco test --timeout 120 sbpv/
+ - raco test --timeout 120 fiddle/
  - raco test --timeout 120 examples/
  - raco setup

@@ -1,7 +1,7 @@
-#lang sbpv
+#lang fiddle
 
-(require sbpv/prelude
-         sbpv/stdlib/CoList)
+(require fiddle/prelude
+         fiddle/stdlib/CoList)
 (provide mk-coord x-coord y-coord scale coord-add
          pt<-ix ix<-pt
 
