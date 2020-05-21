@@ -1,3 +1,6 @@
-.stack-work/
-fiddle.cabal
 *~
+\#*
+.\#*
+.DS_Store
+compiled/
+/doc/
