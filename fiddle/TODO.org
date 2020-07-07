@@ -1,15 +1,20 @@
 * TODO Applications
+  - [ ] GUI: make a CBN wrapper around Racket's class-based OO GUI
+    framework 
+    + application: adapt the Advent of Code 2019 solution to use a GUI
+    + application: develop an xmonad-like "window manager" within the
+      GUI system.
   - [ ] Interpreters
-* TODO Overall
-  1. [-] Make a #lang
+* DONE Overall
+  1. [X] Make a #lang
      1. [X] define works
-     2. [ ] require across fiddle modules
-     3. [ ] require/provide with Racket, wrapped
-     4. [ ] macros work
-  2. [ ] New name
+     2. [X] require across fiddle modules
+     3. [X] require/provide with Racket, wrapped
+     4. [X] macros work
+  2. [X] New name
   3. [X] Implement dot args, apply, general case-lambda as macros in
      SBPV
-  4. [ ] Implement some codata: streams, Haskell lists, parser
+  4. [X] Implement some codata: streams, Haskell lists, parser
      combinator library
 * TODO (Co)Pattern Matching
   - [X] Add literal matching
@@ -20,8 +25,9 @@
   - [ ] struct or Data/Codata forms ala Pyret/PLAI
 * DONE Macros
   - [X] cond
-* DONE Functions
+* DONE Utility Functions
   - [X] CBV currying composition
+* DONE KW Args
 * TODO Nominal Data/CoData
 ** Nominal Data Types  
 

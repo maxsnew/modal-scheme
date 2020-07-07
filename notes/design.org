@@ -1,7 +1,4 @@
-* Design of SBPV
-** Naming
-I should come up with a better name at some point
-** Implicit shifting
+* Implicit shifting
 
 Coding with explicit shifts between computation and value is a bit
 tiresome and can be made lighter-weight (though possibly confusing) by
@@ -46,3 +43,88 @@ only the other explicit. This gives us 3^2=9 language designs.
 8. UE implicit, UI, FI, FE explicit ???
 9. FI implicit, UI, UE, FE explicit ???
 
+
+* Structural vs Open Nominal vs Closed Nominal
+** Structural Fiddle
+   Structural data and codata are what we get for free with Fiddle's
+   dynamic typing. We can implement data using atomic data types,
+   procs and cons cells. We can implement codata using atomic data
+   types, konts and arguments.
+
+   The downside of this approach is a lack of isolation. Parties must
+   always agree on fixed "protocols" or they might step on each others
+   toes.
+
+** (Open) Nominal Fiddle
+   Open Nominal Fiddle is based around the concepts of first class
+   "Cases" and "Methods"
+  
+*** Implementation
+   Both cases and methods will be implemented using Racket structs.
+
+   - A case is a struct, and a member of the case is a
+     value constructed using the struct's constructor. Pattern matching
+     on the case is implemented using the struct's predicate and
+     projection functions.
+
+   - A method is also a struct, and a stack with the method on top is
+     an instance of the struct. A neat thing that happens is the
+     implementation struct always has an extra argument: the tail of
+     the stack!
+
+*** Interface/Syntax
+
+    To implement cases/methods, we need (1) syntax for creating new
+    cases and methods (2) syntax for constructing a case/invoking a
+    method and (3) syntax for matching against a case/method.
+
+**** New Case/New Method
+
+     (def-case name n) the name of the case and the arity
+
+     (def-method name n) the name of the method and the arity
+
+     Note that a method is always "appending" to the stack, so the
+     arity is in some since a minimum of how many arguments are pushed
+     onto the stack after the method. There may be more after, but
+     they are not considered "part" of the method.
+
+**** Constructing/Invoking
+
+     PROBLEM
+
+     (@ name x1 ...) If name is a case, this will construct an element
+     of that case. We would like for this to be a value, but if so
+     there can't be any arity checking...
+
+     2 options for methods.
+     1. Grouped methods
+        `(t %(name x1 ...))`
+     2. Ungrouped methods
+	`(t % name x1 ...)`
+ 
+     Tradeoff: in a grouped method, it is clear which arguments are
+     meant to be part of the method, whereas in ungrouped the cuttof
+     is indeterminate because the syntax is ambiguous: does t v mean v
+     is pushed as an argument or it is pushed onto the "currently
+     invoked method"
+
+     Is there an analogous situation for cases? Sort of. We also want
+     easy access to procedural versions of constructors so that they
+     can be passed around. I.e. the difference between the value (cons
+     x y) and the computation (! Cons) against the stack x y k. We can
+     think of the grouped method as analogous to the value, where the
+     number of arguments is statically known
+     
+
+**** Pattern Matching/Copattern Matching
+
+** (Closed) Nominal Fiddle
+   Closed Nominal is based around the concepts of data types and
+   codata types. A data type fixes a group of cases for the purposes
+   of enabling exhaustiveness checking in pattern matches. A codata
+   type fixes a group of cases for enabling exhaustiveness checking of
+   copattern matches.
+   
+
+  

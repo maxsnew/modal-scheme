@@ -4,11 +4,15 @@
          stack regs
          rkt->fiddle fiddle->rkt fo-rkt->fiddle)
 
-;; This is the *stack*, implemented as a mutable pointer to a list
+;; This is the *stack*, implemented as a mutable pointer to a "list"
 (define stack (box '()))
+
 ;; This is the *register file*, implemented as a mutable hash table
 ;; kw -o> val
 (define regs (make-hash))
+
+(struct vtype (ctor   matcher))
+(struct ctype (method matcher))
 
 (struct foreign (payload))
 
@@ -19,9 +23,10 @@
       (symbol? x)
       (null? x)
       (char? x)
-      (keyword? x)))
-;; rkt->fiddle
+      (keyword? x)
+      (struct? x)))
 
+;; rkt->fiddle
 ;; wraps first-order functions from racket to fiddle
 (define (fo-rkt->fiddle x)
   (cond
@@ -29,7 +34,7 @@
      (λ ()
        (define args (unbox stack))
        (set-box! stack '())
-       (apply x args))]
+       (apply x args))];; if the stack isn't a list, this will "go wrong"
     [else (error 'fo-rkt->fiddle-is-for-fo-funs)]))
 
 ;; racket value -> fiddle value
