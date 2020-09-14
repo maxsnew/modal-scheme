@@ -5,7 +5,8 @@
 (provide slurp-lines!
          slurp-lines~
          read-all-chars
-         display-all-to-file)
+         display-all-to-file
+         apply/cmd-line)
 
 ;; CoList Char
 ;; lazily read stdin
@@ -55,3 +56,7 @@
   [p <- (! open-output-file path)]
   (! display-loop p strs)
   (! close-output-port p))
+
+(def-thunk (! apply/cmd-line k)
+  [args <- (! current-command-line-arguments)]
+  (! apply/vector k args))

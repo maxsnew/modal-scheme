@@ -17,6 +17,10 @@
          displayall debug
          ;; testing
          test-equal!
+
+         ;; vector stuff
+         list<-vector
+         apply/vector
          )
 
 (define-syntax (~ syn)
@@ -269,7 +273,7 @@
 
 ;; Copattern matching
 
-;; A coppatern is one of
+;; A copattern is one of
 ;;   'end -- matches the empty stack
 ;;   (list 'arg pat copat) -- matches an arg with pat, then the rest with copat
 ;;   'any-stack -- matches any stack, binds no variables
@@ -745,3 +749,21 @@
 (def/copat (! CBN c)
   [((= '!)) (! c)]
   [((= '>>) f) (! CBN (~ (! f c)))])
+
+(def-thunk (! negative? x)
+  (! < x 0) )
+
+(def-thunk (! apply/vector-loop k v ix)
+  (cond [(! negative? ix) (! k)]
+        [else
+         [elt <- (! vector-ref v ix)]
+         [next-ix <- (! - ix 1)]
+         (! apply/vector-loop k v next-ix elt)]))
+
+(def-thunk (! apply/vector k v)
+  [last-ix <- (! <<v swap - 1 'o vector-length v)]
+  (! apply/vector-loop k v last-ix)
+  )
+
+(def-thunk (! list<-vector)
+  (! apply/vector List))

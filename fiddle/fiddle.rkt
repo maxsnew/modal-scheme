@@ -13,7 +13,6 @@
 (define-base-type value)
 (define-base-type computation)
 
-
 (define-syntax (require-wrapped-provide stx)
   (syntax-parse stx
     [(_ lib x)
@@ -134,6 +133,16 @@
 (require-fo-wrapped-provide racket/base list->vector)
 (require-wrapped-provide racket/base sort)
 (require-wrapped-provide racket pi)
+
+;; bytestrings
+
+(require-fo-wrapped-provide racket/base bytes?)
+(require-fo-wrapped-provide racket/base byte?)
+(require-fo-wrapped-provide racket/base bytes->list)
+(require-fo-wrapped-provide racket/base list->bytes)
+(require-fo-wrapped-provide racket/base bytes-ref)
+(require-fo-wrapped-provide racket/base bytes-set!)
+(require-fo-wrapped-provide racket/base bytes-length)
 
 ;; Values
 ;;
