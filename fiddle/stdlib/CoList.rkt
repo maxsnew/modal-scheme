@@ -327,6 +327,20 @@
                 (! cl-cons hd (~ (! take-while p? tl)))]
                [else (! cl-nil)])]))
 
+(def-thunk (! take n cl)
+  (cond [(! <= n 0) (ret (list '() cl))]
+        [else
+         [v <- (! cl)]
+         ((copat
+           [((= clv-nil)) (! List '() cl)]
+           [((cons (= 'cons) (cons hd (cons tl _))))
+            [n-1 <- (! - n 1)]
+            [ft*back <- (! take n-1 tl)]
+            [ft <- (! first ft*back)] [back <- (! second ft*back)]
+            (! List (cons hd ft) back)])
+          v)])
+  )
+
 ;; chunks : Nat -> U(CoList A) -> CoList (Listof A)
 (def-thunk (! chunks size l)
   [front*back <- (! split-at size l)]

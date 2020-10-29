@@ -8,7 +8,7 @@
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth fifth sixth empty? rest grab-stack dot-args
          rev-apply apply reverse grab-up-to
-         copat pm length Ret Thunk cond
+         copat pm patc pat length Ret Thunk cond
          and or foldl foldl^ foldr foldr^ map filter ~ @> @>>
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
          <<v <<n oo idiom idiom^
@@ -314,6 +314,9 @@
 (define-thunk (! cons-pat? pat)
   (! and (~ (! cons? pat))
      (~ (do [tg <- (! car pat)] (! equal? tg 'cons)))))
+(define-thunk (! list-pat? pat)
+  (! and (~ (! cons? pat))
+     (~ (do [tg <- (! car pat)] (! equal? tg 'list)))))
 
 ;;
 ;; A copat-syn is either
@@ -376,6 +379,19 @@
              (! match-k abort-k seen~))
          (! up-to-lit match-k abort-k lit (cons x seen)))]))
 
+(define-rec-thunk (! simplify-list-pat pats)
+  (ifc (! null? pats)
+       (ret (list 'lit '()))
+       (do [hd <- (! car pats)]
+           [tl <- (! cdr pats)]
+         [tl-pat <- (! simplify-list-pat tl)]
+         (ret (list 'cons hd tl-pat)))))
+
+(define-rec-thunk (! simplify-pat raw)
+  (ifc (! list-pat? raw)
+       (do [tl <- (! cdr raw)]
+           (! simplify-list-pat tl))
+       (ret raw)))
 ;; Attempt to match the stack against a copattern.
 ;;   exec match-k on success with args as determined by the copat
 ;;   exec abort-k on failure with the current stack
@@ -406,7 +422,8 @@
                   x)]
               [() (! abort-k)])]
             [(! arg-copat? copat)
-             [pat <- (! second copat)]
+             [raw-pat <- (! second copat)]
+             [pat <- (! simplify-pat raw-pat)]
              [copat <- (! third copat)]
              (case-λ
               [(#:bind) (! abort-k)]
@@ -426,7 +443,8 @@
                          (! copat-match match-k (~ (λ (x y) (! abort-k (cons x y))))
                             (cons car-pat (cons cdr-pat copat))
                             x-car x-cdr)]
-                        [#:else (! abort-k x)])])])])))
+                        [#:else (! abort-k x)])]
+                 )])])))
 
 (define-rec-thunk (! try-copatterns copat*ks abort-k)
   (ifc (! null? copat*ks)
@@ -549,6 +567,16 @@
      #:attr all-vars #`#,(append (syntax-e #`car.all-vars)
                                  (syntax-e #`cdr.all-vars)))
     (pattern
+     ((~literal list) p:pat ...)
+     #:attr pattern #`(list 'list p.pattern ...)
+     #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))
+
+    (pattern
+     ((~literal quote) e)
+     #:attr pattern #`(list 'lit (quote e))
+     #:attr all-vars #'())
+    
+    (pattern
      (~or e:boolean e:char e:number e:string)
      #:attr pattern #`(list 'lit e)
      #:attr all-vars #'())
@@ -573,6 +601,14 @@
      ;; #`(list (list cop.patterns (thunk (λ cop.vars e))) ...)
      #`(! try-copatterns-default-error (list (list cop.patterns (thunk (λ cop.vars (do e ...)))) ...))
      ]))
+(define-syntax (pat syn)
+  (syntax-parse syn
+    [(_ v [p:pat k ...] ...)
+     #`((copat [(p) k ...] ...) v)]))
+(define-syntax (patc syn)
+  (syntax-parse syn
+    [(_ c [p:pat k ...] ...)
+     #`(bind (v c) (pat v [p k ...] ...))]))
 
 ;; (case e [p e] ...)
 ;; Pattern language
@@ -682,8 +718,8 @@
 
 (define-syntax (def/copat syn)
   (syntax-parse syn
-    [(_ ((~literal !) f:id x:id ...) ms ...)
-     #`(define-rec-thunk (! f x ...) (copat ms ...))]))
+    [(_ ((~literal !) f:id p:pat ...) ms ...)
+     #`(define-rec-thunk (! f p ...) (copat ms ...))]))
 (define-syntax (def-thunk syn)
   (syntax-parse syn
     [(_ ((~literal !) f:id pat ...) es ...)
