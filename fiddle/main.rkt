@@ -16,6 +16,7 @@
 (begin-for-syntax
   (define-syntax-class def
     (pattern ((~literal typed-define) . _))
+    (pattern ((~literal define!) . _))
     (pattern ((~literal define-primop) . _))
     (pattern ((~literal require) . _))
     (pattern ((~literal provide) . _))

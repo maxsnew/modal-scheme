@@ -7,7 +7,8 @@
          "initialize.rkt"
          (for-syntax syntax/parse))
 (provide (all-defined-out)
-         (rename-out (many-app #%app)))
+         (rename-out (many-app #%app))
+         matches-method?)
 (define (force- th) (th))
 
 (define-base-type value)
@@ -50,6 +51,8 @@
      ]))
 
 (require-fo-wrapped-provide racket/base error)
+(require-fo-wrapped-provide "initialize.rkt" new-method)
+
 (require-fo-wrapped-provide racket/base box)
 (require-fo-wrapped-provide racket/base unbox)
 (require-fo-wrapped-provide racket/base set-box!)
@@ -201,16 +204,6 @@
    --------------
    (≻ (let ([x e]) (let* (rst ...) ebod)))])
 
-(define-typed-syntax λ
-  ([_ () ebod] ≫
-   ---------------
-   [≻ ebod])
-  [(_ (x xs ...) ebod) ≫
-   ------------------
-   [≻ (case-λ
-       [(#:bind) (! error "expected more arguments but didn't get them")]
-       [(x) (λ (xs ...) ebod)])]])
-
 (define-typed-syntax (cons e es) ≫
   (⊢ e ≫ e- ⇐ value)
   (⊢ es ≫ es- ⇐ value)
@@ -231,19 +224,78 @@
   ------------------------
   (≻ (many-app (basic-! e) es ...)))
 
-(define-typed-syntax (case-λ [(#:bind) e] [(x:id) ex]) ≫
+(define-typed-syntax (copat-arg [(x:id) ex] [() e]) ≫
   (⊢ e ≫ e- ⇐ computation)
   ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
-  --------------------------------
+  ----------------------------------------
   (⊢ (let- ()
-       (define- cur (unbox- stack))
-       (cond-
-         [(null?- cur) e-]
-         [else
-          (define- x- (car- cur))
-          (set-box!- stack (cdr- cur))
-          ex-]))
+           (define- cur (unbox- stack))
+           (cond- [(pair?- cur)
+                  (define- x- (car- cur))
+                  (set-box!- stack (cdr- cur))
+                  ex-]
+                 [else e-]))
      ⇒ computation))
+
+(define-typed-syntax (copat-bind [(#:bind) e] [() eelse]) ≫
+  (⊢ e ≫ e- ⇐ computation)
+  (⊢ eelse ≫ eelse- ⇐ computation)
+  ----------------------------------------
+  (⊢ (let- ()
+           (define- cur (unbox- stack))
+           (cond- [(null?- cur) e-]
+                  [else         eelse-]))
+     ⇒ computation))
+
+(define-typed-syntax (copat-method [((~literal %) (v x:id)) ex] [() eelse])  ≫
+  (⊢ v ≫ v- ⇐ value)
+  ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
+  (⊢ eelse ≫ eelse- ⇐ computation)
+  ----------------------------------
+  (⊢ (let- ()
+           (define- cur (unbox- stack))
+           (cond- [(matches-method? cur v-)
+                   (define- x- (method-args cur))
+                   (set-box!- stack (method-tl cur))
+                   ex-]
+                  [else         eelse-]))
+     ⇒ computation)
+  )
+
+(define-typed-syntax (case-λ [(#:bind) e] [(x) ex]) ≫
+   -----------------------------
+   [≻
+    (copat-arg
+     [(x) ex]
+     [() (copat-bind
+          [(#:bind) e]
+          [() (! error "expected an argument or a returning context, but got some method I've never heard of")])])])
+
+;; (define-typed-syntax (case-λ [(#:bind) e] [(x:id) ex]) ≫
+;;   (⊢ e ≫ e- ⇐ computation)
+;;   ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
+;;   --------------------------------
+;;   (⊢ (let- ()
+;;        (define- cur (unbox- stack))
+;;        (cond-
+;;          [(null?- cur) e-]
+;;          [else
+;;           (define- x- (car- cur))
+;;           (set-box!- stack (cdr- cur))
+;;           ex-]))
+;;      ⇒ computation))
+
+(define-typed-syntax λ
+  ([_ () ebod] ≫
+   ---------------
+   [≻ ebod])
+  [(_ (x xs ...) ebod) ≫
+   ------------------
+   [≻ (copat-arg
+       [(x) (λ (xs ...) ebod)]
+       [() (! error "expected more arguments but didn't get them")])]])
+
+
 
 (define-typed-syntax (^ e1 e2) ≫
   (⊢ e1 ≫ e1- ⇐ computation)
@@ -252,6 +304,15 @@
   (⊢ (let- ()
            (set-box!- stack (cons- e2- (unbox- stack)))
            e1-)
+     ⇒ computation))
+
+(define-typed-syntax (^% e vcty) ≫
+  (⊢ e ≫ e- ⇐ computation)
+  (⊢ vcty ≫ vcty- ⇐ value)
+  ----------------
+  (⊢ (let- ()
+           (set-box!- stack (invoke-method (unbox- stack) vcty-))
+           e-)
      ⇒ computation))
 
 ;; what should be the semantics here?
@@ -297,6 +358,10 @@
   [(_ e k:keyword x xs ...) ≫
    ---------------------------
    [≻ (many-app (^: e (quoth k) x) xs ...)]]
+
+  [(_ e (~literal %) v xs ...) ≫
+   ---------------------------
+   [≻ (many-app (^% e v) xs ...)]]
   
   [(_ e x xs ...) ≫
    -----------------
@@ -312,6 +377,18 @@
   (⊢ e ≫ e- ⇐ computation)
   ----------------
   (⊢ (let- ([x- e-]) (void)) ⇒ computation))
+
+(define-typed-syntax (define! x e) ≫
+  (⊢ e ≫ e- ⇐ computation)
+  #:with x-tmp (generate-temporary #'x)
+  --------------------------------------
+  (≻
+   (begin-
+     (define x-tmp e-)
+     (define-syntax x (make-variable-like-transformer (assign-type
+                                                       #'x-tmp #'value
+                                                       #:wrap? #f))))))
+
 
 (define-typed-syntax (typed-define x e) ≫
   (⊢ e ≫ e- ⇐ value)
@@ -349,6 +426,10 @@
   (check-type (many-app (! 3) 4 5 6) : computation)
   (check-type (kw-case-λ
                [(#:test x) (ret #t)]
+               [() (ret #f)])
+              : computation)
+  (check-type (copat-arg
+               [(x) (ret #t)]
                [() (ret #f)])
               : computation)
   )

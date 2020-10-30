@@ -22,17 +22,17 @@
          list<-vector
          apply/vector
          )
-
 (define-syntax (~ syn)
   (syntax-parse syn [(_ e) #'(thunk e)]))
 ;; A Y combinator to get us moving
 (define Y
   (thunk
-   (case-λ
-    [(#:bind) (! error "Y combinator expects one argument, but got none")]
+   (copat-arg
     [(f)
      (let ([self-app (thunk (λ (x) (! f (thunk (! x x)))))])
-       ((! self-app) self-app))])))
+       ((! self-app) self-app))]
+    [() (! error "Y combinator expects one argument, but got none")])))
+
 
 (define-syntax (do syn)
   (syntax-parse syn
@@ -274,11 +274,13 @@
 ;; Copattern matching
 
 ;; A copattern is one of
-;;   'end -- matches the empty stack
+;;   'end -- matches a kont (F stack)
 ;;   (list 'arg pat copat) -- matches an arg with pat, then the rest with copat
 ;;   'any-stack -- matches any stack, binds no variables
-;;   'rest -- matches any stack, but grabs the rest of the stack into a list
+;;   'rest -- matches any stack, pops off all arguments until it finds a method/kont
 ;;   (list 'upto lit copat) -- grabs the stack upto lit as a list, then proceeds as copat
+;;   (list 'method ty 'var copat) matches against the method ty, binds the method args to var and proceeds as copat
+;;   (list 'method ty (pat ...) copat) matches against the method, matches the args of the method against pat, and proceeds as copat
 ;;   (list 'keyword kw pat copat) -- matches pat on the contents of the kw register, failing if the register is not set
 (define-thunk (! end-copat? copat) (! equal? copat 'end))
 (define-thunk (! any-stack-copat? copat) (! equal? copat 'any-stack))
@@ -298,6 +300,11 @@
      (thunk
       (do [tag <- (! car copat)]
           (! equal? 'upto tag)))))
+(define-thunk (! method-copat? copat)
+  (! and
+     (~ (! cons? copat))
+     (~ (do [tag <- (! car copat)]
+            (! equal? tag 'method)))))
 
 ;;
 ;; A pat is one of
@@ -331,9 +338,6 @@
 ;;   (list 'cons p p) -> pattern (cons p p)
 ;;
 ;; #:bind is a kind of pattern that matches the empty stack.
-;; TODO: add constructors (cons)
-;; TODO: add ...-patterns
-
 (define-thunk (! upto-syn? pat)
   (! and
      (thunk (! cons? pat))
@@ -398,9 +402,9 @@
 (define-rec-thunk (! copat-match match-k abort-k syn)
   (do [copat <- (! view-copat syn)]
       (cond [(! end-copat? copat)
-             (case-λ
+             (copat-bind
               [(#:bind) (! match-k)]
-              [(x) (! abort-k x)])]
+              [() (! abort-k)])]
             [(! any-stack-copat? copat) (! match-k)]
             [(! rest-copat? copat) (! dot-args match-k)]
             [(! upto-copat? copat)
@@ -425,8 +429,7 @@
              [raw-pat <- (! second copat)]
              [pat <- (! simplify-pat raw-pat)]
              [copat <- (! third copat)]
-             (case-λ
-              [(#:bind) (! abort-k)]
+             (copat-arg
               [(x)
                (cond
                  [(! var-pat? pat)
@@ -444,7 +447,8 @@
                             (cons car-pat (cons cdr-pat copat))
                             x-car x-cdr)]
                         [#:else (! abort-k x)])]
-                 )])])))
+                 )]
+              [() (! abort-k)])])))
 
 (define-rec-thunk (! try-copatterns copat*ks abort-k)
   (ifc (! null? copat*ks)
@@ -575,11 +579,19 @@
      ((~literal quote) e)
      #:attr pattern #`(list 'lit (quote e))
      #:attr all-vars #'())
+    ;; (pattern
+    ;;  ((~literal %) e:expr x:id)
+    ;;  #:attr pattern #`(list 'method e 'var))
+    ;; (pattern
+    ;;  ((~literal %) e:expr (p:pat ...))
+    ;;  #:attr pattern #`(list 'method e (list p.pattern ...))
+    ;;  #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...))))     )
     
     (pattern
      (~or e:boolean e:char e:number e:string)
      #:attr pattern #`(list 'lit e)
      #:attr all-vars #'())
+    
 )
   (define-syntax-class copat
     #:attributes (patterns vars)

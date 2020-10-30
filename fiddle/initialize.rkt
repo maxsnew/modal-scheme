@@ -1,20 +1,57 @@
 #lang racket/base
 
-(provide (struct-out foreign)
-         stack regs
+(provide (struct-out foreign) (struct-out ctype) (struct-out method)
+         stack regs new-method matches-method? invoke-method
          rkt->fiddle fiddle->rkt fo-rkt->fiddle)
 
-;; This is the *stack*, implemented as a mutable pointer to a "list"
+;; This is the *stack*, a Box Methods
+;; where Methods is one of
+;; - '() -- meaning the calling context is expecting a value
+;; - '(cons ? Methods) -- an argument pushed on
+;; - '(method sym (listof ?) Methods) -- a method with its associated arguments and the remaining methods
 (define stack (box '()))
 
 ;; This is the *register file*, implemented as a mutable hash table
 ;; kw -o> val
 (define regs (make-hash))
 
-(struct vtype (ctor   matcher))
-(struct ctype (method matcher))
+(struct vtype (name
+               arity))
+(struct ctype (name    ;; a gensym'd symbol
+               arity)) ;; a natural number
+
+(struct method (name ;; a gensym'd symbol
+                args ;; a list of arguments
+                tl)) ;; the rest of the methods
+
+(define (matches-method? meths cty)
+  (and (method? meths)
+       (equal? (method-name meths)
+               (ctype-name  cty))))
+
+;; 
+(define (invoke-method meths cty)
+  (define (loop meths remaining args)
+    (cond [(zero? remaining)
+           (method (ctype-name cty) (reverse args) meths)]
+          [(pair? meths)
+           (define hd (car meths))
+           (define meths (cdr meths))
+           (loop meths (sub1 remaining) (cons hd args))]
+          [else
+           (error "tried to apply a method but didn't get enough arguments")]))
+  (unless (ctype? cty)
+    (error "tried to apply something that wasn't a method: " cty))
+  (loop meths (ctype-arity cty) '()))
 
 (struct foreign (payload))
+
+(define (new-method name arity)
+  (cond [(and (symbol? name)
+              (exact-nonnegative-integer? arity))
+         (ctype (gensym name) arity)]
+        [else
+         (error "new-method expects a symbol for a name and natural number for arity but got" name arity)]))
 
 (define (fiddle-datum? x)
   (or (boolean? x)

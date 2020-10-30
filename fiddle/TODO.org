@@ -1,10 +1,26 @@
+* TODO Nominalization
+  1. [X] Split case-lambda into 2 forms: copat-arg and copat-bind
+     (maybe someday copa-bind will be gone too)
+     + [X] make new case-lambda macro
+  2. [X] Add nominal methods
+     + [X] As a first class datatype that can be generated with an arity
+       - implementation: a method is a name (and an arity?)
+     + [X] Add a copat-method form that has the method as an arg
+     + [X] Add an invoke method form? function?
+  3. [ ] In user-space. Make new macros to accommodate the changes
 * TODO Applications
-  - [ ] GUI: make a CBN wrapper around Racket's class-based OO GUI
-    framework 
-    + application: adapt the Advent of Code 2019 solution to use a GUI
-    + application: develop an xmonad-like "window manager" within the
-      GUI system.
-  - [ ] Interpreters
+  - [ ] Classes & GUI stuff
+    - [ ] racket/draw: figure out how to nicely wrap class stuff to
+      CBN stuff.
+      + answer: dynamic-send(!)
+    - [ ] GUI: build on racket/draw to make a full blown GUI system
+      + application: adapt the Advent of Code 2019 solution to use a GUI
+      + application: develop an xmonad-like "window manager" within the
+        GUI system.
+  - [ ] Interpreters using the relative monad approach. Try out some
+    register stuff
+  - [ ] Shell Scripting
+    + [ ] make a command line arg parser 
 * DONE Overall
   1. [X] Make a #lang
      1. [X] define works
@@ -23,6 +39,7 @@
     - [X] cons matching
     - [ ] List matching
   - [ ] struct or Data/Codata forms ala Pyret/PLAI
+  - [ ] predicate matching
 * DONE Macros
   - [X] cond
 * DONE Utility Functions
@@ -62,3 +79,31 @@
    new-vtype* : U((n : Nat) -> F(U(? ->^n F ?) x ∀ Y. U(? ->^n Y) -> UY -> ? -> Y))
 
    new-ctype* : U((n : Nat)-> F(U(U¿ -> ? ->^n ¿) x U(U(? ->^n ¿) -> U¿ -> ¿)))
+** Example Uses of Nominal Codata
+
+   One example I've encountered while programming in fiddle that would
+   be a good use case for nominal codata is in *user-defined effects*.
+
+   As an example, let's say we're using a user-defined non-determinism
+   effect.
+
+   We can do this with CPS'd a free "monad":
+
+   NonDet v =~ forall Y. U(v -> Y) -> UY -> U(U(NonDet v) -> U(NonDet v) -> Y) -> Y
+
+   I've encountered two problems with the "forgetful" embedding of
+   this type into the dynamic setting.
+
+   1. When dealing with variable arity functions, v1 -> ... -> NonDet
+      v I need to be careful to not accidentally grab the
+      kontinuations off of the stack when argument parsing.
+   2. From a modularity perspective you might also accidentally
+      inspect the stack after the kontinuations, essentially
+      accidentally stomping on the handler's kontinuation.
+
+   3. From a reasoning perspective, we may also want to limit what
+      that Y is, to ensure that all handlers for NonDet are "nice"
+      I.e., support things like associativity of choice
+
+   codata NonDet v where
+     .nondeterministically [Y] (return : U(v -> Y)) (fail : UY) (choose : U(U(NonDet v)-> U(NonDet v) -> Y)) : Y
