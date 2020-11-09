@@ -432,7 +432,7 @@
                        (thunk
                         (λ (abort-k xs)
                           (! copat-match (~ (! match-k xs)) abort-k tl-copat)))
-                       abort-k sigil '())]
+                       abort-k lit '())]
                    [(! method-only? sigil)
                     [m <- (! second sigil)]
                     (! up-to-method
