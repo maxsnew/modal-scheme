@@ -1,3 +1,5 @@
+* REPL
+  1. 
 * TODO Nominalization
   1. [X] Split case-lambda into 2 forms: copat-arg and copat-bind
      (maybe someday copa-bind will be gone too)
@@ -7,7 +9,9 @@
        - implementation: a method is a name (and an arity?)
      + [X] Add a copat-method form that has the method as an arg
      + [X] Add an invoke method form? function?
-  3. [ ] In user-space. Make new macros to accommodate the changes
+  3. [-] In user-space. Make new macros to accommodate the changes
+     - [X] basic matching of method args and listof method args
+     - [ ] upto-method matching
 * TODO Applications
   - [ ] Classes & GUI stuff
     - [ ] racket/draw: figure out how to nicely wrap class stuff to

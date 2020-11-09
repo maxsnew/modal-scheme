@@ -282,29 +282,18 @@
 ;;   (list 'method ty 'var copat) matches against the method ty, binds the method args to var and proceeds as copat
 ;;   (list 'method ty (pat ...) copat) matches against the method, matches the args of the method against pat, and proceeds as copat
 ;;   (list 'keyword kw pat copat) -- matches pat on the contents of the kw register, failing if the register is not set
-(define-thunk (! end-copat? copat) (! equal? copat 'end))
-(define-thunk (! any-stack-copat? copat) (! equal? copat 'any-stack))
-(define-thunk (! rest-copat? copat) (! equal? copat 'rest))
-(define-thunk (! keyword-copat? copat)
+(define-thunk (! end-copat?)       (! equal? 'end))
+(define-thunk (! any-stack-copat?) (! equal? 'any-stack))
+(define-thunk (! rest-copat?)      (! equal? 'rest))
+
+(define-thunk (! tagged-copat? tag copat)
   (! and (~ (! cons? copat))
-     (~ (do [tg <- (! first copat)]
-            (! equal? tg 'keyword)))))
-(define-thunk (! arg-copat? copat)
-  (! and
-     (~ (! cons? copat))
-     (~ (do [tag <- (! car copat)]
-            [(! equal? 'arg tag)]))))
-(define-thunk (! upto-copat? copat)
-  (! and
-     (thunk (! cons? copat))
-     (thunk
-      (do [tag <- (! car copat)]
-          (! equal? 'upto tag)))))
-(define-thunk (! method-copat? copat)
-  (! and
-     (~ (! cons? copat))
-     (~ (do [tag <- (! car copat)]
-            (! equal? tag 'method)))))
+     (~ (do [tg <- (! car copat)]
+            (! equal? tg tag)))))
+(define-thunk (! keyword-copat?) (! tagged-copat? 'keyword))
+(define-thunk (! arg-copat?)     (! tagged-copat? 'arg))
+(define-thunk (! upto-copat?)    (! tagged-copat? 'upto))
+(define-thunk (! method-copat?)  (! tagged-copat? 'method))
 
 ;;
 ;; A pat is one of
@@ -338,19 +327,16 @@
 ;;   (list 'cons p p) -> pattern (cons p p)
 ;;
 ;; #:bind is a kind of pattern that matches the empty stack.
-(define-thunk (! upto-syn? pat)
-  (! and
-     (thunk (! cons? pat))
-     (thunk
-      (do [tag <- (! car pat)]
-          (! equal? 'upto tag)))))
 
-(define-thunk (! kw-syn? pat)
+(define-thunk (! tagged-syn? tag pat)
   (! and
      (thunk (! cons? pat))
      (thunk
-      (do [tag <- (! car pat)]
-          (! equal? 'keyword tag)))))
+      (do [tag^ <- (! car pat)]
+          (! equal? tag tag^)))))
+(define-thunk (! upto-syn?) (! tagged-syn? 'upto))
+(define-thunk (! kw-syn?) (! tagged-syn? 'keyword))
+(define-thunk (! method-syn?) (! tagged-syn? 'method))
 
 ;; Parses one level of macro syntax for a copattern into a copattern
 (define-rec-thunk (! view-copat syn)
@@ -367,10 +353,13 @@
          [(! kw-syn? hd)
           (do [kw  <- (! second hd)]
               [pat <- (! third hd)]
-              (! List 'keyword kw pat tl))]
+            (! List 'keyword kw pat tl))]
+         [(! method-syn? hd)
+          (do [method <- (! second hd)]
+              [pat    <- (! third hd)]
+            (! List 'method method pat tl))]
          ;; this is very bad(!!!!!!!!!!! TODO: fixme this is exploitable I think to get weird errors
-         [#:else (! List 'arg hd tl)]
-         ))]))
+         [#:else (! List 'arg hd tl)]))]))
 
 ;; captures up to lit. match-k should take an abort-k argument and a list
 (define-rec-thunk (! up-to-lit match-k abort-k lit seen)
@@ -448,7 +437,20 @@
                             x-car x-cdr)]
                         [#:else (! abort-k x)])]
                  )]
-              [() (! abort-k)])])))
+              [() (! abort-k)])]
+            [(! method-copat? copat)
+             [method <- (! second copat)]
+             [pat <- (! third copat)]
+             [copat <- (! fourth copat)]
+             (copat-method
+              [(% (method xs))
+               (! copat-match match-k (~ (λ (xs) (! apply (~ (! abort-k % method)) xs)))
+                  (cons pat copat)
+                  xs)]
+              [()
+               (! abort-k)])
+             ]
+            [else (! error "copattern matching syntax error, unrecognized copattern: " copat)])))
 
 (define-rec-thunk (! try-copatterns copat*ks abort-k)
   (ifc (! null? copat*ks)
@@ -543,6 +545,15 @@
   (ret 'stdlib-tests-all-pass))
 
 (begin-for-syntax
+  ;; (define-syntax-class meth-args-pat
+  ;;   #:attributes (pattern all-vars)
+  ;;   (pattern x:id
+  ;;    #:attr pattern #''var
+  ;;    #:attr all-vars #'(x))
+  ;;   (pattern (p:pat ...)
+  ;;    #:attr pattern #`(list 'list p.pattern ...)
+  ;;    #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))
+  ;;   )
   (define-syntax-class pat
     #:attributes (pattern all-vars)
     (pattern
@@ -555,8 +566,16 @@
      #:attr all-vars #'())
     (pattern
      ((~literal upto) xs:id e:expr)
-     #:attr pattern #`(list 'upto e)
+     #:attr pattern #`(list 'upto (list 'lit e))
      #:attr all-vars #'(xs))
+    ;; (pattern
+    ;;  ((~literal upto) xs:id ((~literal %) v))
+    ;;  #:attr pattern #`(list 'upto (list 'method v))
+    ;;  #:attr all-vars #'(xs))
+    ;; (pattern
+    ;;  ((~literal upto) xs:id ((~literal %) v meth-args-pat))
+    ;;  #:attr pattern #`(list 'upto (list 'method v))
+    ;;  #:attr all-vars #'(xs))
     (pattern
      (k:keyword p:pat)
      #:attr pattern #`(list 'keyword (quote k) p.pattern)
@@ -579,13 +598,14 @@
      ((~literal quote) e)
      #:attr pattern #`(list 'lit (quote e))
      #:attr all-vars #'())
-    ;; (pattern
-    ;;  ((~literal %) e:expr x:id)
-    ;;  #:attr pattern #`(list 'method e 'var))
-    ;; (pattern
-    ;;  ((~literal %) e:expr (p:pat ...))
-    ;;  #:attr pattern #`(list 'method e (list p.pattern ...))
-    ;;  #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...))))     )
+    (pattern
+     ((~literal %) e:expr x:id)
+     #:attr pattern #`(list 'method e 'var)
+     #:attr all-vars #'(x))
+    (pattern
+     ((~literal %) e:expr (p:pat ...))
+     #:attr pattern #`(list 'method e (list 'list p.pattern ...))
+     #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...))))     )
     
     (pattern
      (~or e:boolean e:char e:number e:string)
@@ -815,3 +835,11 @@
 
 (def-thunk (! list<-vector)
   (! apply/vector List))
+
+(define! chest (! new-method 'chest 1))
+(define! unit (! new-method 'unit 0))
+(define! duo (! new-method 'duo 2))
+
+((copat-method [(% (unit x)) (! displayln x)] [() (ret 3)]) % unit)
+
+((copat [((% unit _)) (ret 3)] [() (ret 4)]) % unit)

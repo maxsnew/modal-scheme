@@ -8,7 +8,8 @@
          (for-syntax syntax/parse))
 (provide (all-defined-out)
          (rename-out (many-app #%app))
-         matches-method?)
+         matches-method?
+         invoke-method)
 (define (force- th) (th))
 
 (define-base-type value)
@@ -311,7 +312,8 @@
   (⊢ vcty ≫ vcty- ⇐ value)
   ----------------
   (⊢ (let- ()
-           (set-box!- stack (invoke-method (unbox- stack) vcty-))
+           (define- cur (unbox- stack))
+           (set-box!- stack (invoke-method cur vcty-))
            e-)
      ⇒ computation))
 

@@ -18,15 +18,18 @@
 (struct vtype (name
                arity))
 (struct ctype (name    ;; a gensym'd symbol
-               arity)) ;; a natural number
+               arity)  ;; a natural number
+  #:transparent
+  )
 
 (struct method (name ;; a gensym'd symbol
                 args ;; a list of arguments
-                tl)) ;; the rest of the methods
+                tl)  ;; the rest of the methods
+  #:transparent)
 
-(define (matches-method? meths cty)
-  (and (method? meths)
-       (equal? (method-name meths)
+(define (matches-method? methods cty)
+  (and (method? methods)
+       (equal? (method-name methods)
                (ctype-name  cty))))
 
 ;; 
@@ -36,8 +39,8 @@
            (method (ctype-name cty) (reverse args) meths)]
           [(pair? meths)
            (define hd (car meths))
-           (define meths (cdr meths))
-           (loop meths (sub1 remaining) (cons hd args))]
+           (define meths^ (cdr meths))
+           (loop meths^ (sub1 remaining) (cons hd args))]
           [else
            (error "tried to apply a method but didn't get enough arguments")]))
   (unless (ctype? cty)
@@ -63,6 +66,9 @@
       (keyword? x)
       (struct? x)))
 
+(define (rkt-stack?! args)
+  (unless (list? args)
+    (error "Racket FFI error: the fiddle stack uses foreign methods that are incompatible with the racket stack " args)))
 ;; rkt->fiddle
 ;; wraps first-order functions from racket to fiddle
 (define (fo-rkt->fiddle x)
@@ -70,6 +76,7 @@
     [(procedure? x)
      (λ ()
        (define args (unbox stack))
+       (rkt-stack?! args)
        (set-box! stack '())
        (apply x args))];; if the stack isn't a list, this will "go wrong"
     [else (error 'fo-rkt->fiddle-is-for-fo-funs)]))
@@ -82,6 +89,7 @@
     [(procedure? x)
      (λ ()
        (define args (unbox stack))
+       (rkt-stack?! args)
        (set-box! stack '())
        (rkt->fiddle (apply x (map fiddle->rkt args))))]
     [else (foreign x)]))
