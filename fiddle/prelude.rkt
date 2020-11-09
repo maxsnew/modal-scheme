@@ -392,7 +392,8 @@
 (define-rec-thunk (! up-to-method match-k abort-k method seen)
   (copat-method
    [(% (method xs)) ;; done, now return seen and xs to match-k
-    (! match-k (~ (! apply (~ (! rev-apply abort-k seen % method)) xs)) seen xs)]
+    (do [nees <- (! reverse seen)]
+        (! match-k (~ (! apply (~ (! rev-apply abort-k seen % method)) xs)) nees xs))]
    [()
     (copat-arg
      [(x) ;; more arguments, push it onto seen and continue
@@ -612,10 +613,6 @@
      ((~literal =) e:expr)
      #:attr pattern #`(list 'lit e)
      #:attr all-vars #'())
-    (pattern
-     ((~literal upto) xs:id e:expr)
-     #:attr pattern #`(list 'upto (list 'lit e))
-     #:attr all-vars #'(xs))
 
     (pattern
      ((~literal upto) xs:id ((~literal %) v))
@@ -624,8 +621,13 @@
     (pattern
      ((~literal upto) xs:id ((~literal %) v m:meth-args-pat))
      #:attr pattern #`(list 'upto (list 'method v m.pattern))
-     #:attr all-vars #`#,(cons (syntax-e #'xs)
+     #:attr all-vars #`#,(cons #`xs
                                (syntax-e #`m.all-vars)))
+
+    (pattern
+     ((~literal upto) xs:id e:expr)
+     #:attr pattern #`(list 'upto (list 'lit e))
+     #:attr all-vars #'(xs))
 
     (pattern
      (k:keyword p:pat)
@@ -881,6 +883,7 @@
 (define! unit (! new-method 'unit 0))
 (define! duo (! new-method 'duo 2))
 
-((copat-method [(% (unit x)) (! displayln x)] [() (ret 3)]) % unit)
+((copat-method [(% (unit x)) (ret x)] [() (ret 3)]) % unit)
 
 ((copat [((% unit _)) (ret 3)] [() (ret 4)]) % unit)
+(def/copat (! ununit x) [((% unit ())) (ret x)])
