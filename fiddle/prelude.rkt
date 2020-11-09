@@ -271,6 +271,14 @@
          (! map-loop f tl (cons y acc)))))
 (define-rec-thunk (! map f xs) (! map-loop f xs '()))
 
+(define-rec-thunk (! length-loop acc xs)
+  (ifc (! null? xs)
+       (ret acc)
+       (do [acc <- (! + 1 acc)]
+           [xs <- (! cdr xs)]
+         (! length-loop acc xs))))
+
+(define-thunk (! length) (! length-loop 0))
 ;; Copattern matching
 
 ;; A copattern is one of
@@ -337,6 +345,15 @@
 (define-thunk (! upto-syn?) (! tagged-syn? 'upto))
 (define-thunk (! kw-syn?) (! tagged-syn? 'keyword))
 (define-thunk (! method-syn?) (! tagged-syn? 'method))
+(define-thunk (! lit?) (! tagged-syn? 'lit))
+(define-thunk (! method-only? s)
+  (! and (~ (! tagged-syn? 'method s))
+     (~ (do [l <- (! length s)]
+            (! = l 2)))))
+(define-thunk (! method-pattern? s)
+  (! and (~ (! tagged-syn? 'method s))
+     (~ (do [l <- (! length s)]
+            (! = l 3)))))
 
 ;; Parses one level of macro syntax for a copattern into a copattern
 (define-rec-thunk (! view-copat syn)
@@ -363,14 +380,25 @@
 
 ;; captures up to lit. match-k should take an abort-k argument and a list
 (define-rec-thunk (! up-to-lit match-k abort-k lit seen)
-  (case-λ
-   [(#:bind) (! rev-apply abort-k seen)]
+  (copat-arg
    [(x)
     (ifc (! equal? x lit)
          (do [seen~ <- (! reverse seen)]
              [abort-k <- (ret (thunk (! rev-apply abort-k seen)))]
              (! match-k abort-k seen~))
-         (! up-to-lit match-k abort-k lit (cons x seen)))]))
+         (! up-to-lit match-k abort-k lit (cons x seen)))]
+   [() (! rev-apply abort-k seen)]))
+
+(define-rec-thunk (! up-to-method match-k abort-k method seen)
+  (copat-method
+   [(% (method xs)) ;; done, now return seen and xs to match-k
+    (! match-k (~ (! apply (~ (! rev-apply abort-k seen % method)) xs)) seen xs)]
+   [()
+    (copat-arg
+     [(x) ;; more arguments, push it onto seen and continue
+      (! up-to-method match-k abort-k method (cons x seen))]
+     [() ;; something else (other method, bind) so fail
+      (! rev-apply abort-k seen)])]))
 
 (define-rec-thunk (! simplify-list-pat pats)
   (ifc (! null? pats)
@@ -398,11 +426,30 @@
             [(! rest-copat? copat) (! dot-args match-k)]
             [(! upto-copat? copat)
              [sigil <- (! second copat)] [tl-copat <- (! third copat)]
-             (! up-to-lit
-                (thunk
-                 (λ (abort-k xs)
-                   (! copat-match (~ (! match-k xs)) abort-k tl-copat)))
-                abort-k sigil '())]
+             (cond [(! lit? sigil)
+                    [lit <- (! second sigil)]
+                    (! up-to-lit
+                       (thunk
+                        (λ (abort-k xs)
+                          (! copat-match (~ (! match-k xs)) abort-k tl-copat)))
+                       abort-k sigil '())]
+                   [(! method-only? sigil)
+                    [m <- (! second sigil)]
+                    (! up-to-method
+                       (~ (λ (abort-k xs m-args)
+                            (! apply (~ (! copat-match (~ (! match-k xs)) abort-k tl-copat % m)) m-args)))
+                       abort-k m '())]
+                   [(! method-pattern? sigil)
+                    [m <- (! second sigil)]
+                    [pat <- (! third sigil)]
+                    (! up-to-method
+                       (~ (λ (abort-k xs m-args)
+                            (! copat-match (~ (! match-k xs))
+                                           (~ (λ (args) (! apply (~ (! abort-k % m)) args)))
+                                           (cons pat tl-copat)
+                                           m-args)))
+                       abort-k m '())])
+             ]
             [(! keyword-copat? copat)
              [kw <- (! second copat)]
              [pat <- (! third copat)]
@@ -545,15 +592,16 @@
   (ret 'stdlib-tests-all-pass))
 
 (begin-for-syntax
-  ;; (define-syntax-class meth-args-pat
-  ;;   #:attributes (pattern all-vars)
-  ;;   (pattern x:id
-  ;;    #:attr pattern #''var
-  ;;    #:attr all-vars #'(x))
-  ;;   (pattern (p:pat ...)
-  ;;    #:attr pattern #`(list 'list p.pattern ...)
-  ;;    #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))
-  ;;   )
+  (define-syntax-class meth-args-pat
+    #:attributes (pattern all-vars)
+    (pattern x:id
+     #:attr pattern #''var
+     #:attr all-vars #'(x))
+    (pattern (p:pat ...)
+     #:attr pattern #`(list 'list p.pattern ...)
+     #:attr all-vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))
+    )
+
   (define-syntax-class pat
     #:attributes (pattern all-vars)
     (pattern
@@ -568,14 +616,17 @@
      ((~literal upto) xs:id e:expr)
      #:attr pattern #`(list 'upto (list 'lit e))
      #:attr all-vars #'(xs))
-    ;; (pattern
-    ;;  ((~literal upto) xs:id ((~literal %) v))
-    ;;  #:attr pattern #`(list 'upto (list 'method v))
-    ;;  #:attr all-vars #'(xs))
-    ;; (pattern
-    ;;  ((~literal upto) xs:id ((~literal %) v meth-args-pat))
-    ;;  #:attr pattern #`(list 'upto (list 'method v))
-    ;;  #:attr all-vars #'(xs))
+
+    (pattern
+     ((~literal upto) xs:id ((~literal %) v))
+     #:attr pattern #`(list 'upto (list 'method v))
+     #:attr all-vars #'(xs))
+    (pattern
+     ((~literal upto) xs:id ((~literal %) v m:meth-args-pat))
+     #:attr pattern #`(list 'upto (list 'method v m.pattern))
+     #:attr all-vars #`#,(cons (syntax-e #'xs)
+                               (syntax-e #`m.all-vars)))
+
     (pattern
      (k:keyword p:pat)
      #:attr pattern #`(list 'keyword (quote k) p.pattern)
@@ -675,16 +726,6 @@
    [(#:bind)
     (! f)]))
 (define-thunk (! idiom) (! idiom^ $))
-
-
-(define-rec-thunk (! length-loop acc xs)
-  (ifc (! null? xs)
-       (ret acc)
-       (do [acc <- (! + 1 acc)]
-           [xs <- (! cdr xs)]
-         (! length-loop acc xs))))
-
-(define-thunk (! length) (! length-loop 0))
 
 (define-thunk (! Ret x) (ret x))
 
