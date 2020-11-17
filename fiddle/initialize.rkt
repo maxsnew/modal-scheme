@@ -66,6 +66,12 @@
       (keyword? x)
       (struct? x)))
 
+(define (regs->kvs)
+  (define kvs (sort (hash->list regs)
+                    keyword<?
+                    #:key car))
+  (values (map car kvs) (map cdr kvs)))
+
 (define (rkt-stack?! args)
   (unless (list? args)
     (error "Racket FFI error: the fiddle stack uses foreign methods that are incompatible with the racket stack " args)))
@@ -78,7 +84,9 @@
        (define args (unbox stack))
        (rkt-stack?! args)
        (set-box! stack '())
-       (apply x args))];; if the stack isn't a list, this will "go wrong"
+       (define-values (ks vs) (regs->kvs))
+       (hash-clear! regs)
+       (keyword-apply x ks vs args))];; if the stack isn't a list, this will "go wrong"
     [else (error 'fo-rkt->fiddle-is-for-fo-funs)]))
 
 ;; racket value -> fiddle value
@@ -91,6 +99,8 @@
        (define args (unbox stack))
        (rkt-stack?! args)
        (set-box! stack '())
+       (define-values (ks vs) (regs->kvs))
+       (hash-clear! regs) ;; TODO: should we instead check the arity of x to determine which kws to pass?
        (rkt->fiddle (apply x (map fiddle->rkt args))))]
     [else (foreign x)]))
 

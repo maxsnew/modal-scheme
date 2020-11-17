@@ -7,12 +7,15 @@
 (provide Y do do^ ifc define-rec-thunk define-thunk def-thunk def/copat
          pop1 Cons List .n .v $ swap const abort
          list first second third fourth fifth sixth empty? rest grab-stack dot-args
-         rev-apply apply reverse grab-up-to
+         rev-apply apply reverse
          copat pm patc pat length Ret Thunk cond
-         and or foldl foldl^ foldr foldr^ map filter ~ @> @>>
+         and or foldl foldl^ foldr foldr^ map filter ~ ~! @> @>>
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
          <<v <<n oo idiom idiom^
-         CBV CBN
+
+         CBV v> v$
+         CBN n> n$
+
          ;; debugging stuff
          displayall debug
          ;; testing
@@ -24,6 +27,8 @@
          )
 (define-syntax (~ syn)
   (syntax-parse syn [(_ e) #'(thunk e)]))
+(define-syntax (~! syn)
+  (syntax-parse syn [(_ e ...) #'(~ (! e ...))]))
 ;; A Y combinator to get us moving
 (define Y
   (thunk
@@ -32,7 +37,6 @@
      (let ([self-app (thunk (λ (x) (! f (thunk (! x x)))))])
        ((! self-app) self-app))]
     [() (! error "Y combinator expects one argument, but got none")])))
-
 
 (define-syntax (do syn)
   (syntax-parse syn
@@ -171,11 +175,11 @@
 ;; stack-loop : forall X. (X -> ?c) -> X -> (U (?v -> X -> F X)) -> ?c
 ;; aka stack-foldl
 (define-rec-thunk (! stack-loop k acc cons)
-  (case-λ
-   [(#:bind) (! k acc)]
+  (copat-arg
    [(x)
     (do [acc^ <- (! cons x acc)]
-        (! stack-loop k acc^ cons))]))
+        (! stack-loop k acc^ cons))]
+   [() (! k acc)]))
 
 (define-thunk (! grab-rev-stack k)
   (! stack-loop k '() Cons))
@@ -206,48 +210,6 @@
 (define-thunk (! apply f xs)
   (do [sx <- (! reverse xs)]
       (! rev-apply f sx)))
-
-; loop-up-to : forall X. (X -> ?c) -> (X -> ?v -> ?c) -> (?v -> F Bool) -> X -> (U (?v -> X -> F X)) -> ?c
-(define-rec-thunk (! loop-up-to ran-out finish finished? acc step)
-  (case-λ
-   [(#:bind) (! ran-out acc)]
-   [(x)
-    (ifc (! finished? x)
-         (! finish acc x)
-         (bind (acc^ (! step acc x))
-               (! loop-up-to ran-out finish finished? acc^ step)))]))
-
-#;
-(! loop-up-to
-   (thunk (λ (xs) (bind (done (! Cons 'no-key xs))
-                        (! abort done))))
-   (thunk (λ (xs key) (bind (res (! Cons key xs)) (! abort res))))
-   (thunk (! equal? 'key))
-   '()
-   (thunk (! swap Cons))
-   0 1 2 'key 2 1 0)
-
-; grab-up-to : forall Y+ Y-. (List Y+ -> Y-) -> (x : ?v) -> (Y+ -o {y : ?v | x = y} -> Y-)
-(define-thunk (! grab-up-to k prompt)
-  (let ([finish
-         (thunk (λ (sx)
-                  (do [xs <- (! reverse sx)]
-                      (! k xs))))])
-    (! loop-up-to
-       finish
-       (thunk (λ (sx _prompt) (! finish sx)))
-       (thunk (! equal? prompt))
-       '()
-       (thunk (! swap Cons)))))
-#;
-(! grab-up-to
-   (thunk (λ (up-to) (! dot-args
-                        (thunk
-                         (λ (rest)
-                           (ret (cons (cons up-to 'before)
-                                      (cons rest 'after))))))))
-   'middle
-   0 1 2 3 'middle 3 2 1 0)
 
 (define-thunk (! even?)
   (letrec ([even? (thunk (λ (x)
@@ -712,6 +674,7 @@
     [(_ m) #`m]))
 
 (define-thunk (! $) (copat [(f) (! f)] [() (! error 'foobar)]))
+(define-thunk (! !!) (copat [(f) (! f)] [() (! error 'foobar)]))
 
 ; idiom is an implementation of "idiom brackets" ala applicative
 ; functors.  Expects the stack to consist of a sequence of UF thunks,
@@ -840,26 +803,26 @@
     [(_ m e es ...)
      #`(bind (x m) (do e es ...))]))
 
-;; example:
-;;   (! CBV f o g $ inp x y)
-;;   =~
-;;   (do [gv <- (! g inp)] (! f gv x y))
+;; ;; example:
+;; ;;   (! CBV f o g $ inp x y)
+;; ;;   =~
+;; ;;   (do [gv <- (! g inp)] (! f gv x y))
 
-;; CBVo[X,Y] = { '$ : X -> Y, 'o : ∀ W. U(W -> F X) -> CBVo[W,Y] }
-;; CBV : ∀ X Y. U(X -> Y) -> CBVo[X,Y]
-(def/copat (! CBV f)
-  [((= '$) x #:bind) (! f x)]
-  [((= 'o) g)
-   (! CBV (~ (! .v f g)))])
+;; ;; CBVo[X,Y] = { '$ : X -> Y, 'o : ∀ W. U(W -> F X) -> CBVo[W,Y] }
+;; ;; CBV : ∀ X Y. U(X -> Y) -> CBVo[X,Y]
+;; (def/copat (! CBV f)
+;;   [((= '$) x #:bind) (! f x)]
+;;   [((= 'o) g)
+;;    (! CBV (~ (! .v f g)))])
 
-;; example:
-;;   (! CBN
+;; ;; example:
+;; ;;   (! CBN
 
-;; CBN>>[Y] = { '! : Y, '>> : ∀ Z. U(UY -> Z) -> CBN>>[Z] }
-;; CBN : ∀ Y. UY -> CBN>>[Y]
-(def/copat (! CBN c)
-  [((= '!)) (! c)]
-  [((= '>>) f) (! CBN (~ (! f c)))])
+;; ;; CBN>>[Y] = { '! : Y, '>> : ∀ Z. U(UY -> Z) -> CBN>>[Z] }
+;; ;; CBN : ∀ Y. UY -> CBN>>[Y]
+;; (def/copat (! CBN c)
+;;   [((= '!)) (! c)]
+;;   [((= '>>) f) (! CBN (~ (! f c)))])
 
 (def-thunk (! negative? x)
   (! < x 0) )
@@ -887,3 +850,24 @@
 
 ((copat [((% unit _)) (ret 3)] [() (ret 4)]) % unit)
 (def/copat (! ununit x) [((% unit ())) (ret x)])
+
+
+;; Nominal combinators
+
+(define! v> (! new-method 'cbv-compose 1))
+(define! v$ (! new-method 'cbv-end 0))
+(def-thunk (! CBV> t u)
+  [x <- (! t)]
+  (! u x))
+(def/copat (! CBV t)
+  [((% v> (u)))(! CBV (~ (! CBV> t u)))]
+  [((% v$ _))   (! t)]
+  [() (! error "CBV composition: expected either another thunk or an end of args method, but got:")])
+
+(define! n> (! new-method 'cbn-compose 1))
+(define! n$ (! new-method 'cbn-end 0))
+(def/copat (! CBN t)
+  [((% n> (u))) (! CBN (~ (! u t)))]
+  [((% n$ ()))  (! t)]
+  [() (! error "CBN composition: expected another composition % no or an end of args marker")])
+

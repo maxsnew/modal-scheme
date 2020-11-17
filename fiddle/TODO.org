@@ -1,6 +1,6 @@
 * REPL
-  1. 
-* TODO Nominalization
+  1. Fix state when an error happens
+* DONE Nominalization (Methods)
   1. [X] Split case-lambda into 2 forms: copat-arg and copat-bind
      (maybe someday copa-bind will be gone too)
      + [X] make new case-lambda macro
@@ -9,9 +9,10 @@
        - implementation: a method is a name (and an arity?)
      + [X] Add a copat-method form that has the method as an arg
      + [X] Add an invoke method form? function?
-  3. [-] In user-space. Make new macros to accommodate the changes
+  3. [X] In user-space. Make new macros to accommodate the changes
      - [X] basic matching of method args and listof method args
-     - [ ] upto-method matching
+     - [X] upto-method matching
+* TODO Nominalization (Structs)
 * TODO Applications
   - [ ] Classes & GUI stuff
     - [ ] racket/draw: figure out how to nicely wrap class stuff to
@@ -25,6 +26,20 @@
     register stuff
   - [ ] Shell Scripting
     + [ ] make a command line arg parser 
+    + [ ] what's the right "type" for a CBPV shell script?
+      it has an input stream, an output stream and returns an exit code
+      - An input stream is a U(CoList Byte)?
+	
+	codata InputStream where 
+	  .read : F (Byte x U(InputStream) + EOF + InputError)
+	  .close : F (Success + CloseError)
+
+      - An output stream is a U(AntiCoList Byte) ?
+	codata OutputStream where
+	  .write : Byte -> F(U(OutputStream) + OutputError)
+	  .close : F(Success + CloseError)
+
+	  
 * DONE Overall
   1. [X] Make a #lang
      1. [X] define works
@@ -84,6 +99,14 @@
 
    new-ctype* : U((n : Nat)-> F(U(U¿ -> ? ->^n ¿) x U(U(? ->^n ¿) -> U¿ -> ¿)))
 ** Example Uses of Nominal Codata
+*** Variable-arity call-by-name
+
+    In call-by-name the idea of "number of arguments" is much more
+    slippery than call-by-value.
+
+    
+
+*** User-defined effects
 
    One example I've encountered while programming in fiddle that would
    be a good use case for nominal codata is in *user-defined effects*.
@@ -111,3 +134,5 @@
 
    codata NonDet v where
      .nondeterministically [Y] (return : U(v -> Y)) (fail : UY) (choose : U(U(NonDet v)-> U(NonDet v) -> Y)) : Y
+
+*** Lightweight stack abstraction

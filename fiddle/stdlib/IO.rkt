@@ -18,6 +18,9 @@
          (ret '(nil))]
         [#:else (ret (list 'cons c (thunk (! read-all-chars-port p))))])))
 
+;; A ->? F B := (A -> F B) /*\ F B
+
+;; Path ->? CoList Char
 (def/copat (! read-all-chars)
   [(#:bind)
    [p <- (! open-input-file "/dev/stdin")]
@@ -43,7 +46,6 @@
    [(#:bind) (! slurp-file "/dev/stdin")]
    [(name #:bind) (! slurp-file name)]))
 
-
 ;; F List String
 (def-thunk (! slurp-lines! (rest args))
   (! list<-colist (~ (! apply slurp-lines~ args))))
@@ -53,7 +55,7 @@
 
 ;; U(CoList String) -> Path -> F 1
 (def-thunk (! display-all-to-file strs path)
-  [p <- (! open-output-file path)]
+  [p <- (! open-output-file path #:exists 'replace)]
   (! display-loop p strs)
   (! close-output-port p))
 

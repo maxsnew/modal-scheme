@@ -86,6 +86,8 @@
 (require-fo-wrapped-provide racket/base string-append)
 
 ;; IO
+(require-fo-wrapped-provide racket with-output-to-string)
+(require-fo-wrapped-provide racket system/exit-code)
 (require-fo-wrapped-provide racket open-input-file)
 (require-fo-wrapped-provide racket close-input-port)
 (require-fo-wrapped-provide racket/base read-line)
