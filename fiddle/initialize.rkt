@@ -84,9 +84,12 @@
        (define args (unbox stack))
        (rkt-stack?! args)
        (set-box! stack '())
-       (define-values (ks vs) (regs->kvs))
-       (hash-clear! regs)
-       (keyword-apply x ks vs args))];; if the stack isn't a list, this will "go wrong"
+       (cond [(zero? (hash-count regs))
+              (apply x args)]
+             [else
+              (define-values (ks vs) (regs->kvs))
+              (hash-clear! regs)
+              (keyword-apply x ks vs args)]))];; if the stack isn't a list, this will "go wrong"
     [else (error 'fo-rkt->fiddle-is-for-fo-funs)]))
 
 ;; racket value -> fiddle value
@@ -99,9 +102,14 @@
        (define args (unbox stack))
        (rkt-stack?! args)
        (set-box! stack '())
-       (define-values (ks vs) (regs->kvs))
-       (hash-clear! regs) ;; TODO: should we instead check the arity of x to determine which kws to pass?
-       (rkt->fiddle (apply x (map fiddle->rkt args))))]
+       (cond [(zero? (hash-count regs))
+              (rkt->fiddle (apply x (map fiddle->rkt args)))]
+             [else
+              (define-values (ks vs) (regs->kvs))
+              (hash-clear! regs)
+              (rkt->fiddle
+               (apply x ks (map fiddle->rkt vs) (map fiddle->rkt args))) ;; TODO: should we instead check the arity of x to determine which kws to pass?
+              ]))]
     [else (foreign x)]))
 
 ;; fiddle->rkt
