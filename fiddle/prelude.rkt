@@ -10,6 +10,8 @@
          rev-apply apply reverse
          copat pm patc pat length Ret Thunk cond
          and or foldl foldl^ foldr foldr^ map filter ~ ~! @> @>>
+
+         even? odd?
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
          <<v <<n oo idiom idiom^
 
@@ -211,18 +213,24 @@
   (do [sx <- (! reverse xs)]
       (! rev-apply f sx)))
 
-(define-thunk (! even?)
-  (letrec ([even? (thunk (λ (x)
-                           (ifc (! zero? x)
-                                (ret #t)
-                                (do [x-1 <- (! - x 1)]
-                                    (! odd? x-1)))))]
-           [odd? (thunk (λ (x)
-                           (ifc (! zero? x)
-                                (ret #f)
-                                (do [x-1 <- (! - x 1)]
-                                    (! even? x-1)))))])
-    (! even?)))
+;; (define-thunk (! even?)
+;;   (letrec ([even? (thunk (λ (x)
+;;                            (ifc (! zero? x)
+;;                                 (ret #t)
+;;                                 (do [x-1 <- (! - x 1)]
+;;                                     (! odd? x-1)))))]
+;;            [odd? (thunk (λ (x)
+;;                            (ifc (! zero? x)
+;;                                 (ret #f)
+;;                                 (do [x-1 <- (! - x 1)]
+;;                                     (! even? x-1)))))])
+;;     (! even?)))
+(define-thunk (! even? x)
+  (do [xmod2 <- (! modulo x 2)]
+      (! = xmod2 0)))
+(define-thunk (! odd? x)
+  (do [xmod2 <- (! modulo x 2)]
+      (! = xmod2 1)))
 
 (define-rec-thunk (! map-loop f xs acc)
   (ifc (! empty? xs)
