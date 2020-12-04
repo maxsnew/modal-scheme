@@ -1,16 +1,17 @@
 #lang fiddle
 
 (require fiddle/prelude)
-(provide clv-nil? clv-cons? clv-hd clv-tl clv-nil cl-nil clv-cons cl-cons
+(provide clv-nil? clv-cons? view clv-hd clv-tl tl clv-nil cl-nil clv-cons cl-cons
          cl-single
-         cl-unfold colist<-list
-         cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter any?
+         cl-unfold colist<-list colist<-string
+         cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter any? all?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
-         range cartesian-product sep-by split-at chunks
+         range cartesian-product sep-by split-when split-at chunks
          cl-zipwith cl-last
 
          repeat forever iterate
+         tails
 
          monoid-cl-foldl
          minimum-monoid
@@ -36,6 +37,18 @@
   (! <<v equal? 'cons 'o first v '$))
 (define clv-hd second)
 (define clv-tl third)
+
+(def-thunk (! tl t)
+  [v <- (! t)]
+  (cond [(! clv-cons? v)
+         [back <- (! clv-tl v)]
+         (! back)]
+        [else (! error "tried to take the tail of an empty colist")]))
+
+(def/copat (! view)
+  [((= clv-nil)) (ret '())]
+  [((list 'cons hd tl)) (! Cons hd tl)])
+; (def-thunk (! cl-hd t) (! <<v clv-hd 'o t))
 
 ;; clv-cons : A -> U CoList A -> CoList A
 (define-thunk (! clv-cons)
@@ -237,11 +250,29 @@
 (define-thunk (! monoid-foldl)
   (copat [(* e c) (! cl-foldl c )]))
 
+(def-thunk (! orv b t) (! or (~! Ret b) t))
 (define-thunk (! any?)
-  (copat [(c) (! cl-foldr c or (~ (ret #f)))]))
+  (copat [(c) (! cl-foldr c orv (~ (ret #f)))]))
+(define-thunk (! all? c)
+  (! idiom^ not (~! any? (~! cl-map not c))))
 
 (def-thunk (! ex) (! range 0 10))
 (def-thunk (! z-ex) (! cl-zipwith ex ex))
+
+;; split-when : U(A -> F Bool) -> U(CoList A) -> F(List (Listof A) U(CoList A))
+(def-thunk (! split-when-loop stop? c acc)
+  (patc (! c)
+    [(= clv-nil)
+     [l <- (! reverse acc)]
+     (! List l cl-nil)]
+    [(list 'cons hd tl)
+     (cond [(! stop? hd)
+            [l <- (! reverse acc)]
+            (! List l (~! cl-cons hd tl))]
+           [else
+            (! split-when-loop stop? tl (cons hd acc))])]))
+
+(def-thunk (! split-when stop? c) (! split-when-loop stop? c '()))
 
 ; A -> U(CoList A) -> CoList (Listof A)
 (def-thunk (! sep-by sep c)
@@ -366,3 +397,14 @@
      (~ (ret seed))))
 
 (def-thunk (! member? x cl) (! <<n any? 'o cl-map (~ (! equal? x)) cl))
+
+(def-thunk (! tails l)
+  [unwrap = (~ (copat
+                [('()) (! cl-nil)]
+                [((cons _ xs)) (! Cons xs xs)]))]
+  (! cl-cons l (~! cl-unfold unwrap l)))
+
+;
+(def-thunk (! colist<-string s)
+  [l <- (! string-length s)]
+  (! cl-map (~! string-ref s) (~! range 0 l)))
