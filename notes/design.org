@@ -91,7 +91,23 @@ only the other explicit. This gives us 3^2=9 language designs.
 
 **** Constructing/Invoking
 
-     PROBLEM
+***** Minimalistic, simple
+
+      if (def-case name n)
+      then this defines a thunk Name of type ? ->^n F ? (errors otherwise)
+      and  a thunk match-name of type ? -> F (('yes ? ..._n) U ('no))
+
+      if (def-method name n)
+      then this defines a thunk Name of type U ¿ -> ? ->^n -> ¿
+      - this function takes the first n arguments off the stack,
+        pushes them back marked by the method, and calls the thunk.
+      - Notably the tail of the stack is abstract unless the thunk
+        knows how to parse the method.
+
+      it should also define a thunk match-name of type U ('yes ? ->^n ¿ /\ 'no -> ¿) -> ¿
+
+***** More efficient?
+      PROBLEM
 
      (@ name x1 ...) If name is a case, this will construct an element
      of that case. We would like for this to be a value, but if so
