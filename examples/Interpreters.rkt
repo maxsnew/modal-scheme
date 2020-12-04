@@ -7,6 +7,53 @@
 ;; we want to figure out what a good abstraction of effects is in
 ;; CBPV.
 
+;; CBPV should be a nice place to implement something as an abstract machine.
+
+;; Let's implement a simple CBV arithmetic language
+;;
+;; Expr ::= Number | Expr + Expr
+;; Value ::= Number
+;; Evaluation Context ::= hole | addl Ctx Expr | addr Val Ctx
+
+;; How does this arise as a blah blah blah
+
+;; data Expr where
+;;   lit Number
+;;   add Expr Expr
+
+;; data Value where
+;;   val Number
+
+;; object Evaluator where
+;;   #addl Expr  : Evaluator
+;;   #addr Value : Evaluator
+;;   #:bind      : F Int
+(define! addl (! new-method 'addl 1))
+(define! addr (! new-method 'addr 1))
+
+;; run : Expr -> Evaluator (Chu?)
+
+;; object Interpreter where
+;;   #expr : Expr -> Evaluator
+;;   #valu : Value -> Evaluator
+(define! iexpr (! new-method 'expr 1))
+(define! ivalu (! new-method 'value 1))
+
+(def/copat (! run)
+  [((% iexpr ((list 'lit n)))) (! run % ivalu n)]
+  [((% iexpr ((list 'add e1 e2)))) (! run % iexpr e1 % addl e2)]
+  [((% ivalu (n)) (% addl (e2))) (! run % iexpr e2 % addr n)]
+  [((% ivalu (n)) (% addr (n1)))
+   [n^ <- (! + n n1)]
+   (! run % ivalu n^)]
+  [((% ivalu (n)) #:bind) (ret n)])
+
+;; eval : Expr -> Return Int
+(def-thunk (! eval e)
+  [x <- (! run % iexpr e)]
+  (ret x))
+
+
 ;; First, we'll make a De-Bruijn style interpreter
 ;; DBIx = Nat
 ;; data Val  = Var DBIx | 'True | 'False | Thunk Comp
