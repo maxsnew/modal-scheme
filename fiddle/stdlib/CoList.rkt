@@ -1,7 +1,7 @@
 #lang fiddle
 
 (require fiddle/prelude)
-(provide clv-nil? clv-cons? view clv-hd clv-tl tl clv-nil cl-nil clv-cons cl-cons
+(provide clv-nil? clv-cons? view clv-hd clv-tl hd tl clv-nil cl-nil clv-cons cl-cons
          cl-single
          cl-unfold colist<-list colist<-string
          cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter any? all?
@@ -12,6 +12,7 @@
 
          repeat forever iterate
          tails
+         windows2
 
          monoid-cl-foldl
          minimum-monoid
@@ -38,6 +39,11 @@
 (define clv-hd second)
 (define clv-tl third)
 
+(def-thunk (! hd t)
+  [v <- (! t)]
+  (! clv-hd v))
+
+;; U(CoList A) -> CoList A
 (def-thunk (! tl t)
   [v <- (! t)]
   (cond [(! clv-cons? v)
@@ -379,7 +385,6 @@
   (cond [(! empty? front) (! cl-nil)]
         [else (! cl-cons front (~ (! chunks size back)))]))
 
-
 ;; U(A -> F Bool) -> U(CoList A) -> F A
 (def-thunk (! first-such-that p? xs)
   (! cl-foldr xs
@@ -387,7 +392,6 @@
                 (cond [(! p? x) (ret x)]
                       [else (! k)])]))
      (~ (! error 'didnt-find-it))))
-
 
 (def-thunk (! iterate f seed)
   (! cl-unfold
@@ -408,3 +412,17 @@
 (def-thunk (! colist<-string s)
   [l <- (! string-length s)]
   (! cl-map (~! string-ref s) (~! range 0 l)))
+
+;; windows2 : U(CoList A) -> CoList (List A A)
+;; Makes a colist of a "sliding window" of every consecutive pair of elements
+;; So (a b c d ...) becomes ((a b) (b c) (c d) ...)
+(def-thunk (! windows2 c)
+  [window-iter = (~ (copat [((cons hd tl))
+  (patc (! idiom^ view tl)
+   ['() (! cl-nil)]
+   [(cons hd2 tl)
+    (! Cons (list hd hd2) (cons hd2 tl))])]))]
+  (patc (! idiom^ view c)
+    ['() (! cl-nil)]
+    [(cons hd tl)
+     (! cl-unfold window-iter (cons hd tl))]))

@@ -1,7 +1,10 @@
 #lang fiddle
 
-(require fiddle/prelude)
-(provide update update^ empty-table table<-hash)
+(require fiddle/prelude
+         fiddle/stdlib/CoList)
+(provide update update^ empty-table
+         table<-hash table-set<-list table-set-intersect
+         universal-table-set)
 
 ;; codata Table K V where
 ;;   has-key? |- K -> F bool
@@ -23,7 +26,27 @@
    [((= 'remove) k #:bind)
     [h <- (! hash-remove h k)] (ret (~ (! table<-hash h)))]
    [((= 'to-list) #:bind) (! hash->list h)]))
+
 (define-thunk (! table<-hash~ h) (ret (thunk (! table<-hash h))))
+
+(def/copat (! universal-table-set)
+  [((= 'has-key?) k #:bind) (ret #t)]
+  [((= 'get) k v #:bind)     (ret #t)])
+
+(def-thunk (! table-set<-list xs)
+  (! CBV (~! map (~! swap List #t) xs)
+     % v> (~! apply append)
+     % v> (~! apply hash)
+     % v> table<-hash~
+     % v$))
+
+;; U(Table A Bool) -> U(Table A Bool) -> FU (Table A Bool)
+(def-thunk (! table-set-intersect t2 t1)
+  (! CBV (~! t1 'to-list)
+     % v> (~! map car)
+     % v> (~! filter (~ (λ (k) (! t2 'has-key? k))))
+     % v> table-set<-list
+     % v$))
 
 (define-thunk (! update tbl k v updater)
   (ifc (! tbl 'has-key? k)
