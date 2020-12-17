@@ -87,6 +87,7 @@
 (require-fo-wrapped-provide racket/base string-append)
 (require-fo-wrapped-provide racket/base string-length)
 (require-fo-wrapped-provide racket/base string-ref)
+(require-fo-wrapped-provide racket/base substring)
 
 ;; IO
 (require-fo-wrapped-provide racket with-output-to-string)

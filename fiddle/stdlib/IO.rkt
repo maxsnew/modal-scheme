@@ -4,7 +4,7 @@
 (require fiddle/stdlib/CoList)
 (provide slurp-lines!
          slurp-lines~
-         read-all-chars
+         read-all-chars read-all-string
          display-all-to-file
          apply/cmd-line)
 
@@ -28,6 +28,10 @@
   [(name #:bind)
    [p <- (! open-input-file name)]
    (! read-all-chars-port p)])
+
+(def-thunk (! read-all-string (rest args))
+  [l <- (! list<-colist (~! apply read-all-chars args))]
+  (! list->string l))
 
 (def-thunk (! slurp-lines-port~ p)
   (do [l <- (! read-line p)]

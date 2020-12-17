@@ -3,11 +3,12 @@
 (require fiddle/prelude)
 (provide clv-nil? clv-cons? view clv-hd clv-tl hd tl clv-nil cl-nil clv-cons cl-cons
          cl-single
-         cl-unfold colist<-list colist<-string
-         cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter any? all?
+         cl-unfold colist<-list colist<-string colist<-vector
+         cl-map cl-bind cl-bind^ cl-join cl-foldr cl-foldr^ cl-filter partition any? all?
          cl-append cl-append*
          cl-foldl cl-foldl^ cl-foldl1 cl-length list<-colist cl-foreach
-         range cartesian-product sep-by split-when split-at chunks
+         range cartesian-product sep-by sep-when split-when split-at take drop nth
+         chunks
          cl-zipwith cl-last
 
          repeat forever iterate
@@ -17,6 +18,10 @@
          monoid-cl-foldl
          minimum-monoid
          minimum-by
+         minimum-by1
+         minimum
+         maximum-by
+         maximum-by1
          maximum
 
          take-while
@@ -236,18 +241,16 @@
 (def-thunk (! cl-join cl-of-cl) (! cl-bind cl-of-cl $))
 
 ;; cartesian-product : CoList A -> CoList B -> CoList (List A B)
-(define-thunk (! cartesian-product)
+(define-rec-thunk (! cartesian-product)
   (copat
-   [(l1 l2)
+   [(#:bind) (! cl-single '())]
+   [(l (rest ls))
     (! cl-bind
-       l1
-       (~
-        (copat
-         [(x)
-          (! cl-map
-             (~
-              (copat [(y) (ret (list x y))]))
-             l2)])))]))
+       l
+       (~ (λ (x)
+            (! cl-map
+               (~ (λ (xs) (ret (cons x xs))))
+               (~! apply cartesian-product ls)))))]))
 
 ;(! list<-colist (thunk (! cartesian-product (thunk (! range 0 3)) (thunk (! range 5 7)))))
 
@@ -280,8 +283,8 @@
 
 (def-thunk (! split-when stop? c) (! split-when-loop stop? c '()))
 
-; A -> U(CoList A) -> CoList (Listof A)
-(def-thunk (! sep-by sep c)
+
+(def-thunk (! sep-when sep? c)
   (letrec
       ([loop
         (~ (copat [(acc c)
@@ -293,10 +296,16 @@
                          [else
                           [hd <- (! clv-hd v)] [tl <- (! clv-tl v)]
                           (cond
-                            [(! equal? hd sep)
+                            [(! sep? hd)
                              (! <<v swap cl-cons (~ (! loop '() tl)) 'o reverse acc)]
                             [else (! loop (cons hd acc) tl)])])]))])
     (! loop '() c)))
+
+; A -> U(CoList A) -> CoList (Listof A)
+(def-thunk (! sep-by sep c)
+  (! sep-when (~! equal? sep) c))
+
+
 
 (def-thunk (! cl-last-loop x c)
   [v <- (! c)]
@@ -337,6 +346,32 @@
   (do [m <- (! minimum-monoid (thunk (! pb f <=)) f*+inf)]
    (! monoid-cl-foldl m)))
 
+(define-thunk (! maximum-by1 f c)
+  [patc (! cl-foldl c (~ (copat
+                     [((list x fx) y)
+                      [fy <- (! f y)]
+                      (cond [(! >= fx fy) (ret (list x fx))]
+                            [else (ret (list y fy))])]))
+           (list -inf.0 -inf.0))
+        [(list x fx) (ret x)]])
+
+(define-thunk (! minimum-by1 f c)
+  [patc (! cl-foldl c (~ (copat
+                     [((list x fx) y)
+                      [fy <- (! f y)]
+                      (cond [(! <= fx fy) (ret (list x fx))]
+                            [else (ret (list y fy))])]))
+           (list +inf.0 +inf.0))
+        [(list x fx) (ret x)]])
+
+(define-thunk (! maximum-by f f*-inf)
+  
+  (do [m <- (! minimum-monoid (thunk (! pb f >=)) f*-inf)]
+   (! monoid-cl-foldl m)))
+
+(def-thunk (! minimum)
+  [m <- (! minimum-monoid <= +inf.0)]
+  (! monoid-cl-foldl m))
 (def-thunk (! maximum)
   [m <- (! minimum-monoid >= -inf.0)]
   (! monoid-cl-foldl m))
@@ -355,6 +390,20 @@
           [front <- (! Cons hd front)]
           (! List front back)])])
 
+(def-thunk (! take n cl)
+  [l*tl <- (! split-at n cl)]
+  (! first l*tl))
+
+(def-thunk (! drop n cl)
+  [l*tl <- (! split-at n cl)]
+  (! second l*tl))
+
+(def-thunk (! nth n cl)
+  (patc (! idiom^ $ (~! drop n cl))
+        [(list 'cons hd _) (ret hd)]
+        [(list 'nil) (! error "nth: index out of range" n)]))
+
+
 (def-thunk (! take-while p? cl)
   [v <- (! cl)]
   (cond [(! clv-nil? v) (! cl-nil)]
@@ -363,7 +412,7 @@
          (cond [(! p? hd)
                 (! cl-cons hd (~ (! take-while p? tl)))]
                [else (! cl-nil)])]))
-
+#;
 (def-thunk (! take n cl)
   (cond [(! <= n 0) (ret (list '() cl))]
         [else
@@ -413,6 +462,10 @@
   [l <- (! string-length s)]
   (! cl-map (~! string-ref s) (~! range 0 l)))
 
+(def-thunk (! colist<-vector v)
+  [l <- (! vector-length v)]
+  (! cl-map (~! vector-ref v) (~! range 0 l)))
+
 ;; windows2 : U(CoList A) -> CoList (List A A)
 ;; Makes a colist of a "sliding window" of every consecutive pair of elements
 ;; So (a b c d ...) becomes ((a b) (b c) (c d) ...)
@@ -426,3 +479,12 @@
     ['() (! cl-nil)]
     [(cons hd tl)
      (! cl-unfold window-iter (cons hd tl))]))
+
+(def-thunk (! partition left? c)
+  (patc (! cl-foldl c
+           (~ (copat [((list ls rs) x)
+                      (cond [(! left? x) (ret (list (cons x ls)         rs))]
+                            [else        (ret (list          ls (cons x rs)))])]))
+           '(() ()))
+    [(list ls rs)
+     (! idiom^ List (~! reverse ls) (~! reverse rs))]))
