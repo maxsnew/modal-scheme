@@ -768,8 +768,10 @@
      #`(define-rec-thunk (! f p ...) (copat ms ...))]))
 (define-syntax (def-thunk syn)
   (syntax-parse syn
-    [(_ ((~literal !) f:id pat ...) es ...)
-     #`(define-rec-thunk (! f) (copat [(pat ...) es ...]))]))
+    [(_ ((~literal !) f:id x:id ... p:pat ... #:bind) es ...)
+     #`(define-rec-thunk (! f x ...) (copat [(p ... #:bind) es ...]))]
+    [(_ ((~literal !) f:id x:id ... p:pat ...) es ...)
+     #`(define-rec-thunk (! f x ...) (copat [(p ...) es ...]))]))
 
 (define-rec-thunk (! filter p xs)
   (cond
