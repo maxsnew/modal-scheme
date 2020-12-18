@@ -10,7 +10,7 @@
          bindE ;; 
          appE appE^ ;; variable-arity version of bind
 
-         handle re-handle ;; handlers/algebras
+         handle shallow-handle re-handle ;; handlers/algebras
          firstReq stateAlg
          )
 
@@ -46,6 +46,9 @@
 ;; handle : U(Eff v) -> U(v -> B) -> U(Req -> U(Rsp -> B) -> B) -> B
 (def-thunk (! handle t retHandler opHandler)
   (! t % eff retHandler (~ (λ (req k) (! opHandler req (~ (λ (rsp) (! handle (~ (! k rsp)) retHandler opHandler))))))))
+
+(def-thunk (! shallow-handle t retHandler opHandler)
+  (! t % eff retHandler opHandler))
 
 ;; U(Eff v) -> U(v -> Eff v')
 (def/copat (! bindE)
