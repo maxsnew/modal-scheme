@@ -252,7 +252,7 @@
 ;; Copattern matching
 
 ;; A copattern is one of
-;;   'end -- matches a kont (F stack)
+;;   end-copat -- matches a kont (F stack)
 ;;   (list 'arg pat copat) -- matches an arg with pat, then the rest with copat
 ;;   'any-stack -- matches any stack, binds no variables
 ;;   'rest -- matches any stack, pops off all arguments until it finds a method/kont
@@ -260,7 +260,12 @@
 ;;   (list 'method ty 'var copat) matches against the method ty, binds the method args to var and proceeds as copat
 ;;   (list 'method ty (pat ...) copat) matches against the method, matches the args of the method against pat, and proceeds as copat
 ;;   (list 'keyword kw pat copat) -- matches pat on the contents of the kw register, failing if the register is not set
-(define-thunk (! end-copat?)       (! equal? 'end))
+(define! End (! new-tag 'end 0))
+(define! end-copat (! Tag End))
+(define-thunk (! end-copat? c)
+  (pat-tag c
+           [(@ (End _)) (ret #t)]
+           [else (ret #f)]))
 (define-thunk (! any-stack-copat?) (! equal? 'any-stack))
 (define-thunk (! rest-copat?)      (! equal? 'rest))
 
@@ -332,7 +337,7 @@
     [(! cons? syn)
      (do [hd <- (! car syn)] [tl <- (! cdr syn)]
        (cond
-         [(! or (~ (! equal? 'end hd)) (~ (! equal? 'rest hd)))
+         [(! or (~ (! end-copat? hd)) (~ (! equal? 'rest hd)))
           (ret hd)]
          [(! upto-syn? hd)
           (do [sigil <- (! second hd)]
@@ -389,11 +394,13 @@
 ;;   exec abort-k on failure with the current stack
 (define-rec-thunk (! copat-match match-k abort-k syn)
   (do [copat <- (! view-copat syn)]
-      (cond [(! end-copat? copat)
-             (copat-bind
-              [(#:bind) (! match-k)]
-              [() (! abort-k)])]
-            [(! any-stack-copat? copat) (! match-k)]
+      (pat-tag copat
+       [(@ (End _))
+        (copat-bind
+         [(#:bind) (! match-k)]
+         [() (! abort-k)])]
+       [else
+      (cond [(! any-stack-copat? copat) (! match-k)]
             [(! rest-copat? copat) (! dot-args match-k)]
             [(! upto-copat? copat)
              [sigil <- (! second copat)] [tl-copat <- (! third copat)]
@@ -468,7 +475,7 @@
               [()
                (! abort-k)])
              ]
-            [else (! error "copattern matching syntax error, unrecognized copattern: " copat)])))
+            [else (! error "copattern matching syntax error, unrecognized copattern: " copat)])])))
 
 (define-rec-thunk (! try-copatterns copat*ks abort-k)
   (ifc (! null? copat*ks)
@@ -579,6 +586,7 @@
      x:id
      #:attr pattern #''var
      #:attr all-vars #'(x))
+
     (pattern
      ((~literal =) e:expr)
      #:attr pattern #`(list 'lit e)
@@ -621,6 +629,14 @@
      ((~literal quote) e)
      #:attr pattern #`(list 'lit (quote e))
      #:attr all-vars #'())
+
+    (pattern
+     ((~literal @) e:expr x:id)
+     #:attr pattern #`(list 'tagged e 'var)
+     #:attr all-vars #'(x))
+
+    ;; tagged destructure
+    
     (pattern
      ((~literal %) e:expr x:id)
      #:attr pattern #`(list 'method e 'var)
@@ -645,7 +661,7 @@
      #:attr vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))
     (pattern
      (p:pat ... #:bind)
-     #:attr patterns #`(list p.pattern ... 'end)
+     #:attr patterns #`(list p.pattern ... end-copat)
      ;; #:when (displayln (syntax-e #`(p.all-vars ...)))
      #:attr vars #`#,(apply append (map syntax-e (syntax-e #`(p.all-vars ...)))))))
 
@@ -881,3 +897,23 @@
   [((% n$ ()))  (! t)]
   [() (! error "CBN composition: expected another composition % no or an end of args marker")])
 
+(define! pair (! new-tag 'pair 2))
+(define! mt   (! new-tag 'mt 0))
+(def/copat (! nom<-list)
+  [('()) (! Tag mt)]
+  [((cons x xs)) (! idiom^ (~! Tag pair x) (~! nom<-list xs))])
+
+(define! p (! Tag pair 0 1))
+(define! the-mt (! Tag mt))
+
+
+(def-thunk (! list<-nom x)
+  (pat-tag x
+   [(@ (mt dud)) (ret '())]
+   [else 
+    (pat-tag x
+      [(@ (pair hd*tl))
+       (do [hd <- (! first hd*tl)]
+           [tl <- (! second hd*tl)]
+         (! idiom^ (~! Cons hd) (~! list<-nom tl)))]
+      [_ (! error )])]))

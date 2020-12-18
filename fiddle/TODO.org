@@ -1,8 +1,12 @@
+* TODO Better Error Messages
+  1. [ ] syntax erros
+  2. [ ] copat
+  3. [ ] error needs to work on stacks with structs in them
 * REPL
   1. Fix state when an error happens
 * DONE Nominalization (Methods)
   1. [X] Split case-lambda into 2 forms: copat-arg and copat-bind
-     (maybe someday copa-bind will be gone too)
+     (maybe someday copat-bind will be gone too)
      + [X] make new case-lambda macro
   2. [X] Add nominal methods
      + [X] As a first class datatype that can be generated with an arity
@@ -13,6 +17,11 @@
      - [X] basic matching of method args and listof method args
      - [X] upto-method matching
 * TODO Nominalization (Structs)
+  1. [X] "Runtime"
+  2. [X] Core Lang
+  3. [ ] Macros
+     1) [ ] nominalize the copattern matching macro
+     2) [ ] 
 * TODO Applications
   - [ ] Classes & GUI stuff
     - [ ] racket/draw: figure out how to nicely wrap class stuff to
@@ -63,7 +72,13 @@
   - [X] cond
 * DONE Utility Functions
   - [X] CBV currying composition
-* DONE KW Args
+* TODO KW Args
+  1. Currently there's a failure of "migrationality" in the KW
+     argument FFI: in fiddle, being passed kw args you don't know/have
+     access to is fine, they just remain untouched registers. But in
+     the FFI, it passes all args to the racket function.
+
+     
 * TODO Nominal Data/CoData
 ** Nominal Data Types  
 

@@ -8,7 +8,7 @@
          (for-syntax syntax/parse))
 (provide (all-defined-out)
          (rename-out (many-app #%app))
-         matches-method?
+         matches-method? matches-tag?
          invoke-method)
 (define (force- th) (th))
 
@@ -53,6 +53,8 @@
 
 (require-fo-wrapped-provide racket/base error)
 (require-fo-wrapped-provide "initialize.rkt" new-method)
+(require-fo-wrapped-provide "initialize.rkt" new-tag)
+(require-fo-wrapped-provide "initialize.rkt" Tag)
 
 (require-fo-wrapped-provide racket/base box)
 (require-fo-wrapped-provide racket/base unbox)
@@ -254,7 +256,7 @@
                   [else         eelse-]))
      ⇒ computation))
 
-(define-typed-syntax (copat-method [((~literal %) (v x:id)) ex] [() eelse])  ≫
+(define-typed-syntax (copat-method [((~literal %) (v x:id)) ex] [() eelse]) ≫
   (⊢ v ≫ v- ⇐ value)
   ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
   (⊢ eelse ≫ eelse- ⇐ computation)
@@ -266,6 +268,20 @@
                    (set-box!- stack (method-tl cur))
                    ex-]
                   [else         eelse-]))
+     ⇒ computation)
+  )
+
+(define-typed-syntax (pat-tag v [((~literal @) (vt x:id)) ex] [_ eelse]) ≫
+  (⊢ v ≫ v- ⇐ value)
+  (⊢ vt ≫ vt- ⇐ value)
+  ((x ≫ x- : value) ⊢ ex ≫ ex- ⇐ computation)
+  (⊢ eelse ≫ eelse- ⇐ computation)
+  ----------------------------------
+  (⊢ (let- ()
+           (cond- [(matches-tag? v- vt-)
+                   (define- x- (tagged-args v-))
+                   ex-]
+                  [else eelse-]))
      ⇒ computation)
   )
 
@@ -301,8 +317,6 @@
    [≻ (copat-arg
        [(x) (λ (xs ...) ebod)]
        [() (! error "expected more arguments but didn't get them")])]])
-
-
 
 (define-typed-syntax (^ e1 e2) ≫
   (⊢ e1 ≫ e1- ⇐ computation)

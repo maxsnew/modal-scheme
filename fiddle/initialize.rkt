@@ -1,7 +1,7 @@
 #lang racket/base
 
-(provide (struct-out foreign) (struct-out ctype) (struct-out method)
-         stack regs new-method matches-method? invoke-method
+(provide (struct-out foreign) (struct-out ctype) (struct-out method) (struct-out vtype) (struct-out tagged)
+         stack regs new-method matches-method? invoke-method new-tag matches-tag? Tag
          rkt->fiddle fiddle->rkt fo-rkt->fiddle)
 
 ;; This is the *stack*, a Box Methods
@@ -16,7 +16,13 @@
 (define regs (make-hash))
 
 (struct vtype (name
-               arity))
+               arity)
+  #:transparent)
+
+(struct tagged (name
+                args)
+  #:transparent)
+
 (struct ctype (name    ;; a gensym'd symbol
                arity)  ;; a natural number
   #:transparent
@@ -27,10 +33,20 @@
                 tl)  ;; the rest of the methods
   #:transparent)
 
+(define (matches-tag? v vty)
+  (and (tagged? v)
+       (equal? (tagged-name v)
+               (vtype-name  vty))))
+
 (define (matches-method? methods cty)
   (and (method? methods)
        (equal? (method-name methods)
                (ctype-name  cty))))
+
+(define (Tag tag . args)
+  (unless (= (length args) (vtype-arity tag))
+    (error "tried to construct a tagged value but gave the wrong number of arguments" tag args))
+  (tagged (vtype-name tag) args))
 
 ;; 
 (define (invoke-method meths cty)
@@ -55,6 +71,12 @@
          (ctype (gensym name) arity)]
         [else
          (error "new-method expects a symbol for a name and natural number for arity but got" name arity)]))
+
+(define (new-tag name arity)
+  (cond [(and (symbol? name) (exact-nonnegative-integer? arity))
+         (vtype (gensym name) arity)]
+        [else
+         (error "new-tag expects a symbol for a name and natural number for arity but got" name arity)]))
 
 (define (fiddle-datum? x)
   (or (boolean? x)
