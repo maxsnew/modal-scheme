@@ -3,6 +3,7 @@
 (require fiddle/prelude
          fiddle/stdlib/CoList)
 (provide update update~ update^ empty-table
+         map-vals
          table<-hash table<-list table-set<-list table-set-intersect
          universal-table-set)
 
@@ -13,11 +14,6 @@
 ;;   get      |- K -> V -> F V
 ;;   remove   |- K -> FU (Table K V)
 ;;   to-list  |- F (Listof (Cons K V))
-
-;; Listof (Cons K V) -> FU(Table K V)
-(def-thunk (! table<-list kvs)
-  [flattened <- (! foldr kvs (~ (copat [((cons k v) acc) (ret (cons k (cons v acc)))])) '())]
-  (! apply hash flattened))
 
 (define-rec-thunk (! table<-hash h)
   (copat
@@ -36,6 +32,12 @@
    [((= 'to-hash) #:bind) (ret h)]))
 
 (define-thunk (! table<-hash~ h) (ret (thunk (! table<-hash h))))
+
+;; Listof (Cons K V) -> FU(Table K V)
+(def-thunk (! table<-list kvs)
+  [flattened <- (! foldr kvs (~ (copat [((cons k v) acc) (ret (cons k (cons v acc)))])) '())]
+  [h <- (! apply hash flattened)]
+  (ret (~! table<-hash h)))
 
 (def/copat (! universal-table-set)
   [((= 'empty?) #:bind) (ret #f)]
@@ -81,3 +83,11 @@
     (! <<v
        (~ (λ (t) (! t 'to-list))) 'o
        t 'remove 'x))
+
+(def-thunk (! map-vals t f)
+  (! CBV (~! t 'to-list)
+     % v> (~! map (~ (copat [((cons k v))
+                            [v <- (! f v)]
+                            (ret (cons k v))])))
+     % v> table<-list
+     % v$))

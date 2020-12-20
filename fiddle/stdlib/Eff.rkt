@@ -12,6 +12,9 @@
 
          handle shallow-handle re-handle ;; handlers/algebras
          firstReq stateAlg
+
+         map-listE
+         memo-fixE
          )
 
 ;; All free monads can be given in the form
@@ -171,3 +174,27 @@
 (def/copat (! last x)
   [(y) (! last y)]
   [(#:bind) (ret x)])
+
+(def/copat (! map-listE f)
+  [('())         (! retE '())]
+  [((cons x xs)) (! mapE Cons (~! f x) (~! map-listE f xs))])
+
+(def-thunk (! lookupE id args)
+  (! raiseE (list 'lookup id args)))
+
+(def-thunk (! saveE id args y)
+  (! raiseE (list 'save id args y)))
+
+
+;;
+(def-thunk (! memo-fixE id f)
+  (copat [((rest args))
+          (! bindE (~! lookupE id args)
+             (~ (copat
+                 [('unknown)
+                  (! bindE (~! apply (~! f (~! memo-fixE id f)) args)
+                     (~ (λ (y)
+                          (! bindE (~! saveE id args y)
+                             (~ (λ (_) (! retE y)))))))]
+                 [((list 'known x)) (! retE x)])))]))
+
