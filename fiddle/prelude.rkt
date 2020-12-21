@@ -6,10 +6,10 @@
 
 (provide Y do do^ ifc define-rec-thunk define-thunk def-thunk def/copat
          pop1 Cons List .n .v $ swap const abort
-         list first second third fourth fifth sixth empty? rest grab-stack dot-args
+         list last first second third fourth fifth sixth empty? rest grab-stack dot-args
          rev-apply apply reverse
          copat pm patc pat length Ret Thunk cond
-         and or foldl foldl^ foldr foldr^ map filter ~ ~! @> @>>
+         and or foldl foldl^ foldl1 foldl1^ foldr foldr^ map filter ~ ~! @> @>>
 
          even? odd?
          ;; "Calling conventions: call-by-value, call-by-name, and method style"
@@ -124,6 +124,12 @@
 (define first car)
 (define empty? null?)
 (define rest cdr)
+
+(define-rec-thunk (! last lst)
+  (do [tl <- (! cdr lst)]
+      (cond [(! null? tl) (! car lst)]
+            [else         (! last tl)])))
+
 (define-thunk (! second lst)
   (do [tl <- (! cdr lst)]
       (! car tl)))
@@ -767,6 +773,13 @@
          [xs <- (! cdr l)]
        [acc <- (! step acc x)]
        (! foldl xs step acc))]))
+
+(define-thunk (! foldl1 xs step)
+  (cond [(! null? xs) (! error "tried to foldl1 with an empty list")]
+        [else [x <- (! first xs)] [xs <- (! rest xs)]
+              (! foldl xs step x)]))
+
+(define-thunk (! foldl1^ step xs) (! foldl1 xs step))
 
 ;; (define-rec-thunk (! map f l)
 ;;   (! <<v reverse 'o

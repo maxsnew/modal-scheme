@@ -5,7 +5,11 @@
 (provide update update~ update^ empty-table
          map-vals
          table<-hash table<-list table-set<-list table-set-intersect
-         universal-table-set)
+         universal-table-set
+
+         push-tbl
+         split-adjacency-tbl
+         )
 
 ;; codata Table K V where
 ;;   has-key? |- K -> F bool
@@ -84,10 +88,27 @@
        (~ (λ (t) (! t 'to-list))) 'o
        t 'remove 'x))
 
-(def-thunk (! map-vals t f)
+(def-thunk (! map-vals f t)
   (! CBV (~! t 'to-list)
      % v> (~! map (~ (copat [((cons k v))
                             [v <- (! f v)]
                             (ret (cons k v))])))
      % v> table<-list
      % v$))
+
+;; An AdjTbl A B is a Table (list A B) Bool
+
+;; Table K (Table V Bool) -> K -> V -> Table K (Table V Bool)
+(def-thunk (! push-tbl t k v)
+  (! update~ t k (~! empty-table 'set v #t) (~! swap apply (list 'set v #t))))
+
+;; Table (list A B) Bool -> List (Table A (Listof B)) (Table B (Listof A))
+(def-thunk (! split-adjacency-tbl rel)
+  (! cl-foldr (~! <<v colist<-list 'o rel 'to-list)
+     (~ (copat [((cons (list l r) _) k l->rs r->ls)
+                [l->rs <- (! push-tbl l->rs l r)]
+                [r->ls <- (! push-tbl r->ls r l)]
+                (! k l->rs r->ls)]))
+     (~ (λ (l->rs r->ls) (! map (~! map-vals (~! <<v map car 'o swap apply '(to-list))) (list l->rs r->ls))))
+     empty-table
+     empty-table))
